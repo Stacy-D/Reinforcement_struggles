@@ -1,10 +1,10 @@
-# Exercise 4 - Joint Action Learner.
+# Exercise 4 - Joint Action Learning
 
-In this task, you are required to implement the Joint Action Learning algorithm. In general, this algorithm follows similar steps with the Q-Learning algorithm. However, unlike Q-Learning, the Q-tables are defined for joint actions. Additionally, this algorithm also maintains a model of opponent behaviour which will be used to calculate the updates during the training process. 
+In this task, you are required to implement Joint Action Learning with opponent modelling. In general, this algorithm follows similar steps with the Q-Learning algorithm. However, unlike Q-Learning, the Q-tables are defined for joint actions. Additionally, this algorithm also maintains a model of opponent behaviour (where "opponent" refers to the other agent in the controlled team) which will be used to calculate the updates during the training process and to select actions. 
 
-The opponent model should be based on the actions of opponent agents observed at a particular state. In this case, for each state, the model should store an empirical distribution of observed opponent behaviour under each state. When the state has yet been visited, initialize the opponent model using a discrete uniform distribution.
+The opponent model predicts the actions of the modelled agent in a given state. For each state, the model should store an empirical distribution of observed opponent behaviour under each state. When the state has not yet been visited, initialize the opponent model using a discrete uniform distribution over actions.
 
-For the state-joint action value table, implement updates that are still the same with your usual Q-Learning update. However, unlike Q-Learning, the maximum next state value is computed as the value of the best action that the modelling agent can take in the next state. The value of the best action is the the expected value of action under the distribution of actions that the opponent can take. In turn, the distribution of actions that the opponent can take is calculated based on the opponent model the agent have learnt.
+For the state-joint action value table, implement updates that are still the same with your usual Q-Learning update. However, unlike Q-Learning, the maximum next state value is computed as the value of the best action that the modelling agent can take in the next state. The value of the best action is the the expected value of action under the distribution of actions that the opponent can take. In turn, the distribution of actions that the opponent can take is calculated based on the opponent model the agent has learnt.
 
 For a concise description of the algorithm, refer to Table 4 from the works of [**Bowling and Veloso, 2001**](http://www.cs.cmu.edu/~mmv/papers/02aij-mike.pdf).
 
@@ -50,4 +50,26 @@ To see how your implemented function interact with each other to train the agent
 Using similar codes as what you've seen in `__main__`, we are going to run your agent on a randomly sampled environment and compare it's performance to our solution. Performance is measured by running an experiment using your implementation. We then divide the sequence of episodes into groups of consecutive episodes and average the reward of the agent on these groups.
 
 ### Unit test marking
-We compare the results of updates from `learn()` for unit testing.
+We compare the results of updates from `learn()` for unit testing. In this case, learn() should output the change in updated state-action values used in training. As an example, assume the agents are given the following set of experiences :
+
+```
+Timestep, State, Agent 1 Action, Agent 2 Action, Agent 1 Reward, Agent 2 Reward, Next State
+1, [[[1,1],[1,3]], [1,3] ,[2,3]], MOVE_UP, MOVE_RIGHT, -0.4, -0.4, [[[1,0],[2,3]], [2,3] ,[2,3]]
+2, [[[1,0],[2,3]], [2,3] ,[2,3]], MOVE_DOWN, MOVE_LEFT, 0.0, 0.0, [[[1,1],[1,3]], [1,3] ,[2,3]]
+3. [[[1,1],[1,3]], [1,3] ,[2,3]], NO_OP, KICK, 0.0, 0.0, ["GOAL", "GOAL"]
+```
+
+Then, the outputs of learn should be something like :
+```
+Timestep, Agent 1 learn() output, Agent 2 learn() output
+1, Change in Q<[[[1,1],[1,3]], [1,3] ,[2,3]], (MOVE_UP, MOVE_RIGHT)>, Change in Q<[[[1,1],[1,3]], [1,3] ,[2,3]], (MOVE_RIGHT, MOVE_UP)>
+2, Change in Q<[[[1,0],[2,3]], [2,3] ,[2,3]], (MOVE_DOWN, MOVE_LEFT)>, Change in Q<[[[1,0],[2,3]], [2,3] ,[2,3]], (MOVE_LEFT, MOVE_DOWN)>
+3, Change in Q<[[[1,1],[1,3]], [1,3] ,[2,3]], (NO_OP, KICK)>, Change in Q<[[[1,1],[1,3]], [1,3] ,[2,3]], (KICK, NO_OP)>
+```
+which in this case, should be :
+```
+Timestep, Agent 1 learn() output, Agent 2 learn() output
+1, -0.04, -0.04 
+2, 0.0, 0.0
+3, 0.0, 0.0
+```

@@ -2,7 +2,7 @@ from MDP import MDP
 
 
 class BellmanDPSolver(object):
-    def __init__(self, gamma=1):
+    def __init__(self, discountRate=1):
         self.MDP = MDP()
         self.gamma = gamma
         self.initVs()
