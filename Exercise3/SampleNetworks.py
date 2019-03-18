@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class ValueNetwork(nn.Module):
-    def __init__(self,inputDims, layerDims, outputDims):
+    def __init__(self, inputDims, layerDims, outputDims):
 
         super(ValueNetwork, self).__init__()
 
