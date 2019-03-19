@@ -105,12 +105,13 @@ if __name__ == '__main__':
     parser.add_argument('--numOpponents', type=int, default=0)
     parser.add_argument('--numTeammates', type=int, default=0)
     parser.add_argument('--numEpisodes', type=int, default=500)
+    parser.add_argument('--port', type=int, default=6000)
 
     args = parser.parse_args()
 
     numEpisodes = args.numEpisodes
     # Initialize connection to the HFO environment using HFOAttackingPlayer
-    hfoEnv = HFOAttackingPlayer(numOpponents=args.numOpponents, numTeammates=args.numTeammates, agentId=args.id)
+    hfoEnv = HFOAttackingPlayer(numOpponents=args.numOpponents, numTeammates=args.numTeammates, agentId=args.id, port=args.port)
     hfoEnv.connectToServer()
 
     # Initialize a SARSA Agent

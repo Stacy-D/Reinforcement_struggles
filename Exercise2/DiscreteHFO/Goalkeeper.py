@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
 	numEpisodes = args.numEpisodes
 
-	hfo = HFOGoalkeepingPlayer()
+	hfo = HFOGoalkeepingPlayer(port=args.port)
 	hfo.connectToServer()
 
 	for episode in range(numEpisodes):	
