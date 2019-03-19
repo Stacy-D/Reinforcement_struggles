@@ -34,14 +34,15 @@ class HFOEnv(object):
     def startEnv(self):
         if self.numTeammates == 0:
             os.system(
-                "./../../../bin/HFO --seed {} --defense-npcs=0 --defense-agents={} --offense-agents=1 --trials 8000 --untouched-time 500 --frames-per-trial 500 --port {} --headless --fullstate & ".format(
+                "./../../../bin/HFO  --headless --seed {} --defense-npcs=0 --defense-agents={} --offense-agents=1 --trials 8000 --untouched-time 500 --frames-per-trial 500 --port {}  --fullstate & ".format(
                     str(self.seed),
                     str(self.numOpponents), str(self.port)))
+            print(self.port)
         else:
             os.system(
-                "./../../../bin/HFO --seed {} --defense-agents={} --defense-npcs=0 --offense-npcs={} --offense-agents=1 --trials 8000 --untouched-time 500 --frames-per-trial 500  --headless--port {} --fullstate &".format(
+                "./../../../bin/HFO --seed {} --defense-agents={} --defense-npcs=0 --offense-npcs={} --offense-agents=1 --trials 8000 --untouched-time 500 --frames-per-trial 500  --headless --port {} --fullstate &".format(
                     str(self.seed), str(self.numOpponents), str(self.numTeammates), str(self.port)))
-        time.sleep(5)
+        time.sleep(10)
 
     # Reset the episode and returns a new initial state for the next episode
     # You might also reset important values for reward calculations
@@ -55,10 +56,12 @@ class HFOEnv(object):
     # Connect the custom weaker goalkeeper to the server and
     # establish agent's connection with HFO server
     def connectToServer(self):
+        time.sleep(5)
         os.system("./Goalkeeper.py --numEpisodes=8000 --port={} &".format(str(self.port)))
         time.sleep(2)
         self.hfo.connectToServer(HIGH_LEVEL_FEATURE_SET, self.config_dir, self.port, self.server_addr, self.team_name,
                                  self.play_goalie)
+        print('{} connected'.format(self.port))
 
     # This method computes the resulting status and states after an agent decides to take an action
     def act(self, actionString):

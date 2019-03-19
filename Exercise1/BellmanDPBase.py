@@ -4,7 +4,7 @@ from MDP import MDP
 class BellmanDPSolver(object):
     def __init__(self, discountRate=1):
         self.MDP = MDP()
-        self.gamma = gamma
+        self.gamma = discountRate
         self.initVs()
 
     def initVs(self):
@@ -38,7 +38,19 @@ class BellmanDPSolver(object):
 if __name__ == '__main__':
     solution = BellmanDPSolver()
     solution.initVs()
-    for i in range(2000):
+    for i in range(20000):
         values, policy = solution.BellmanUpdate()
     print("Values : ", values)
     print("Policy : ", policy)
+    states = [(x, y) for x in range(5) for y in range(5)]
+    print("\nState Values")
+    for counter, (y, x) in enumerate(states):
+        print("{:+.4f}  ".format(values[(x, y)]), end='')
+
+        if ((counter + 1) % 5 == 0 and counter != 0):
+            print("")
+    print("\n State Policies")
+    for counter, (y, x) in enumerate(states):
+        print("{:25} ".format(', '.join(policy[(x, y)])), end='')
+        if ((counter + 1) % 5 == 0 and counter != 0):
+            print("")

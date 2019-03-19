@@ -6,10 +6,14 @@ import random
 epsilon_list = [0.1, 0.2, 0.3, 0.4, 0.5]
 
 def train(idx, args, value_network, target_network, optimizer, lock, counter):
-    port = 8100 + 10 * idx  # init
-    seed = idx * 99
+    port = 8000 + 40 * idx  # init
+    seed = idx*100 + 123
+    torch.manual_seed(seed)
     hfo_env = HFOEnv(numTeammates=0, numOpponents=1, port=port, seed=seed)
+    """
     hfo_env.connectToServer()
+    print('Port {} connected'.format(port))
+
     discount = 0.99
     episode_num = 0
     eps = random.sample(epsilon_list, 1)[0]
@@ -52,7 +56,7 @@ def train(idx, args, value_network, target_network, optimizer, lock, counter):
                 break
 
         episode_num += 1
-
+        """
 
 def computeTargets(reward, nextObservation, discountFactor, done, targetNetwork):
     """

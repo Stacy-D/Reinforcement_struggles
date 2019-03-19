@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # encoding utf-8
-import torch.multiprocessing as mp
+import  multiprocessing as mp
 from Worker import train
 from Networks import ValueNetwork
 from SharedAdam import SharedAdam
 import argparse
 import torch
+import time
 parser = argparse.ArgumentParser(description='One step Q-learning')
-parser.add_argument('--num-processes', default=2, type=int, help='Number of processes to train the agents in')
+parser.add_argument('--num-processes', default=4, type=int, help='Number of processes to train the agents in')
 parser.add_argument('--lr', type=float, default=0.0001, metavar='LR',
                     help='learning rate (default: 0.01)')
 parser.add_argument('--cuda', action='store_true', default=False,
@@ -50,7 +51,6 @@ if __name__ == "__main__":
 
     torch.manual_seed(args.seed)
     #TODO figure out what this thing does
-    mp.set_start_method('spawn')
     counter = mp.Value('i', 0)
     lock = mp.Lock()
 
@@ -62,7 +62,10 @@ if __name__ == "__main__":
         trainingArgs = (idx, args, value_network, target_network, optimizer, lock, counter)
         p = mp.Process(target=train, args=(trainingArgs))
         #train the model across `num_processes` processes
+        print('start {}'.format(idx))
         p.start()
+        print('end {}'.format(idx))
+
         processes.append(p)
     for p in processes:
         p.join()
