@@ -15,6 +15,7 @@ class SARSAAgent(Agent):
         self.discount = discountFactor
         self.init_lr = learningRate
         self.init_ep = epsilon
+        self.min_ep = 0.005
         self.setEpsilon(epsilon)
         self.q = defaultdict(lambda: initVals)
         self.prev_act = None
@@ -26,6 +27,7 @@ class SARSAAgent(Agent):
         self.old_val = 0
         self.td_target = 0
         self.reward = 0
+        self.decay_factor = (self.init_ep - self.min_ep)/2500
 
     def learn(self):
         # value after update subtracted by value before update
@@ -38,11 +40,15 @@ class SARSAAgent(Agent):
         sample = random.random()
         if sample > self.epsilon:
             val = 0
-            act = self.possibleActions[0]
+            act = []
             for a in self.possibleActions:
-                appr = self.q[(self.cur_state, a)]
-                val, act = (appr, a) if appr > val else (val, act)
-            return act
+                pos_val = self.q[(self.cur_state, a)]
+                if pos_val > val:
+                    act = [a]
+                elif pos_val == val:
+                    act.append(a)
+            # if there is multiple actions with max choose on random
+            return random.sample(act, 1)[0]
         else:
             return self.possibleActions[random.randint(0, 4)]
 
@@ -69,9 +75,10 @@ class SARSAAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        k = 0.95
-        lr = self.init_lr * np.exp(-k*numTakenActions)
-        eps = self.init_ep * np.exp(-0.3 * numTakenActions)
+        k = 0.01
+        lr = self.init_lr * 0.99**(numTakenActions/100)
+        eps = max(self.min_ep, self.init_ep - numTakenActions*self.decay_factor)
+        print((lr, eps))
         return lr, eps
 
     def toStateRepresentation(self, state):
@@ -115,7 +122,7 @@ if __name__ == '__main__':
     hfoEnv.connectToServer()
 
     # Initialize a SARSA Agent
-    agent = SARSAAgent(0.1, 0.99, 1)
+    agent = SARSAAgent(0.1, 0.95, 1)
 
     # Run training using SARSA
     numTakenActions = 0

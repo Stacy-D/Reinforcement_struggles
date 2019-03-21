@@ -86,7 +86,6 @@ if __name__ == '__main__':
 
 		for idx in range(len(result_list)):
 			if not math.isclose(update[idx], float(result_list[idx]), abs_tol=1e-5):
-				print("Wrong Output")
 				exit()
 
 		print("Correct Output")

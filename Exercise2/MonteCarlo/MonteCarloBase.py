@@ -4,69 +4,120 @@
 from DiscreteHFO.HFOAttackingPlayer import HFOAttackingPlayer
 from DiscreteHFO.Agent import Agent
 import argparse
+import numpy as np
+from collections import defaultdict
+
 
 class MonteCarloAgent(Agent):
-	def __init__(self, discountFactor, epsilon, initVals=0.0):
-		super(MonteCarloAgent, self).__init__()
+    def __init__(self, discountFactor, epsilon, initVals=0.0):
+        super(MonteCarloAgent, self).__init__()
+        self.policy = self.get_epsilon_policy()
+        self.discount = discountFactor
+        self.epsilon = epsilon
+        self.init_q(initVals)
+        # init for sum and count
+        self.returns = defaultdict(lambda: defaultdict(float))
+        self.current_episode = []
+        self.cur_state = None
+        self.status = None
 
-	def learn(self):
-		raise NotImplementedError
 
-	def toStateRepresentation(self, state):
-		raise NotImplementedError
+    def init_q(self, init_val):
+        self.q = {((x, y), a): init_val for a in self.possibleActions for x in range(0, 5) for y in range(0, 4)}
 
-	def setExperience(self, state, action, reward, status, nextState):
-		raise NotImplementedError
+    def learn(self):
 
-	def setState(self, state):
-		raise NotImplementedError
+        # complete Q-value table of all states
+        # Q-value estimate after update of the states you've encountered in the episode ordered by their first time appearance in the episode.
+        lookup = set()
+        filtered_pairs = [((x[0], x[1]), index) for index, x in enumerate(self.current_episode)
+                          if (x[0], x[1]) not in lookup and lookup.add((x[0], x[1])) is None]
+        update = []
+        for pair, finx in filtered_pairs:
+            G = sum([x[2] * (self.discount ** i) for i, x in enumerate(self.current_episode[finx:])])
+            self.returns[pair]['G'] += G
+            self.returns[pair]['cnt'] += 1
+            upd = self.returns[pair]['G'] / self.returns[pair]['cnt']
+            self.q[pair] = upd
+            update.append(upd)
+        return self.q, update
 
-	def reset(self):
-		raise NotImplementedError
+    def toStateRepresentation(self, state):
+        return state[0]
 
-	def act(self):
-		raise NotImplementedError
+    def setExperience(self, state, action, reward, status, nextState):
+        self.current_episode.append((state, action, reward))
+        self.cur_state = nextState
+        self.status = status
 
-	def setEpsilon(self, epsilon):
-		raise NotImplementedError
+    def setState(self, state):
+        self.cur_state = state
 
-	def computeHyperparameters(self, numTakenActions, episodeNumber):
-		raise NotImplementedError
+    def reset(self):
+        self.current_episode = []
+        self.cur_state = None
+
+    def act(self):
+        act_probs = self.policy(self.cur_state)
+        return np.random.choice(self.possibleActions, p=act_probs)
+
+    def setEpsilon(self, epsilon):
+        self.epsilon = epsilon
+
+    def computeHyperparameters(self, numTakenActions, episodeNumber):
+        eps = max(self.min_ep, self.init_ep * 0.95 ** (numTakenActions / 500))
+        return eps
+
+    def get_epsilon_policy(self):
+        def get_policy(state):
+            # select max action
+            best_action = np.argmax(self.q[state])
+            # init all with eps/|A| probs
+            actions = np.ones(len(self.possibleActions), dtype=float) * self.epsilon / len(self.possibleActions)
+            # increase best action prob
+            actions[best_action] += (1.0 - epsilon)
+            return actions
+        return get_policy
 
 
 if __name__ == '__main__':
 
-	parser = argparse.ArgumentParser()
-	parser.add_argument('--id', type=int, default=0)
-	parser.add_argument('--numOpponents', type=int, default=0)
-	parser.add_argument('--numTeammates', type=int, default=0)
-	parser.add_argument('--numEpisodes', type=int, default=500)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--id', type=int, default=0)
+    parser.add_argument('--numOpponents', type=int, default=0)
+    parser.add_argument('--numTeammates', type=int, default=0)
+    parser.add_argument('--numEpisodes', type=int, default=500)
+    parser.add_argument('--port', type=int, default=500)
 
-	args=parser.parse_args()
+    args = parser.parse_args()
 
-	#Init Connections to HFO Server
-	hfoEnv = HFOAttackingPlayer(numOpponents = args.numOpponents, numTeammates = args.numTeammates, agentId = args.id)
-	hfoEnv.connectToServer()
+    # Init Connections to HFO Server
+    hfoEnv = HFOAttackingPlayer(numOpponents=args.numOpponents,
+                                numTeammates=args.numTeammates,
+                                agentId=args.id,
+                                port=args.port)
+    hfoEnv.connectToServer()
 
-	# Initialize a Monte-Carlo Agent
-	agent = MonteCarloAgent(discountFactor = 0.99, epsilon = 1.0)
-	numEpisodes = args.numEpisodes
-	numTakenActions = 0
-	# Run training Monte Carlo Method
-	for episode in range(numEpisodes):	
-		agent.reset()
-		observation = hfoEnv.reset()
-		status = 0
+    # Initialize a Monte-Carlo Agent
+    agent = MonteCarloAgent(discountFactor=0.99, epsilon=1.0)
+    numEpisodes = args.numEpisodes
+    numTakenActions = 0
+    # Run training Monte Carlo Method
+    for episode in range(numEpisodes):
+        agent.reset()
+        observation = hfoEnv.reset()
+        status = 0
 
-		while status==0:
-			epsilon = agent.computeHyperparameters(numTakenActions, episode)
-			agent.setEpsilon(epsilon)
-			obsCopy = observation.copy()
-			agent.setState(agent.toStateRepresentation(obsCopy))
-			action = agent.act()
-			numTakenActions += 1
-			nextObservation, reward, done, status = hfoEnv.step(action)
-			agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status, agent.toStateRepresentation(nextObservation))
-			observation = nextObservation
+        while status == 0:
+            epsilon = agent.computeHyperparameters(numTakenActions, episode)
+            agent.setEpsilon(epsilon)
+            obsCopy = observation.copy()
+            agent.setState(agent.toStateRepresentation(obsCopy))
+            action = agent.act()
+            numTakenActions += 1
+            nextObservation, reward, done, status = hfoEnv.step(action)
+            agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status,
+                                agent.toStateRepresentation(nextObservation))
+            observation = nextObservation
 
-		agent.learn()
+        agent.learn()

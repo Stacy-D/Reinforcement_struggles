@@ -10,7 +10,6 @@ def train(idx, args, value_network, target_network, optimizer, lock, counter):
     seed = idx*100 + 123
     torch.manual_seed(seed)
     hfo_env = HFOEnv(numTeammates=0, numOpponents=1, port=port, seed=seed)
-    """
     hfo_env.connectToServer()
     print('Port {} connected'.format(port))
 
@@ -56,7 +55,6 @@ def train(idx, args, value_network, target_network, optimizer, lock, counter):
                 break
 
         episode_num += 1
-        """
 
 def computeTargets(reward, nextObservation, discountFactor, done, targetNetwork):
     """
