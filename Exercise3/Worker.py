@@ -3,16 +3,16 @@ import torch.nn as nn
 from Environment import HFOEnv
 import random
 
-epsilon_list = [0.1, 0.2, 0.3, 0.4, 0.5]
+epsilon_list = [0.2, 0.3, 0.4, 0.5, 0.8, 0.9, 1]
+
 
 def train(idx, args, value_network, target_network, optimizer, lock, counter):
-    port = 8000 + 40 * idx  # init
+    port = 8100 + 10 * idx  # init
     seed = idx*100 + 123
     torch.manual_seed(seed)
     hfo_env = HFOEnv(numTeammates=0, numOpponents=1, port=port, seed=seed)
     hfo_env.connectToServer()
     print('Port {} connected'.format(port))
-
     discount = 0.99
     episode_num = 0
     eps = random.sample(epsilon_list, 1)[0]
@@ -24,7 +24,7 @@ def train(idx, args, value_network, target_network, optimizer, lock, counter):
         loss = 0
         reward_ep = 0
         while not done:
-            action_idx = select_action(obs_tensor, value_network, t, 4000, args, eps)
+            action_idx = select_action(obs_tensor, value_network, t, args.num_episodes*args.per_episode, args, eps)
 
             action = hfo_env.possibleActions[action_idx]
             next_obs_tensor, reward, done, status, info = hfo_env.step(action)
@@ -51,9 +51,10 @@ def train(idx, args, value_network, target_network, optimizer, lock, counter):
                 loss.backward()
                 optimizer.step()
                 loss = 0
-            if t % 500 == 0:  # end of episodes
+            if counter.value >= args.max_steps:
+                saveModelNetwork(value_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
+            if t % args.per_episode == 0:  # end of episodes
                 break
-
         episode_num += 1
 
 def computeTargets(reward, nextObservation, discountFactor, done, targetNetwork):
