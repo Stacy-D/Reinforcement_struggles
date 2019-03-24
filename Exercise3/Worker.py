@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from Environment import HFOEnv
 import random
+from hfo import *
 
 epsilon_list = [0.2, 0.3, 0.4, 0.5, 0.8, 0.9, 1]
 
@@ -55,7 +56,12 @@ def train(idx, args, value_network, target_network, optimizer, lock, counter):
                 saveModelNetwork(value_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
             if t % args.per_episode == 0:  # end of episodes
                 break
+
         episode_num += 1
+        # end of game for an agent
+        if status == SERVER_DOWN:
+            hfo.quitGame()
+            break
 
 def computeTargets(reward, nextObservation, discountFactor, done, targetNetwork):
     """

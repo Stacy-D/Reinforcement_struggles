@@ -97,8 +97,8 @@ class HFOEnv(object):
          base your rewards and states from. Just ensure that you've put the correct choice in line 56 of Environment.py.
         """
         if status == GOAL:
-            reward = 1.0
-        elif status in [CAPTURED_BY_DEFENSE, OUT_OF_BOUNDS, OUT_OF_TIME]:
+            reward = 2.0
+        elif status in [CAPTURED_BY_DEFENSE, OUT_OF_BOUNDS]:
             reward = -1.0
         else:
             reward = 0
