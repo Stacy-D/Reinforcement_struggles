@@ -99,7 +99,10 @@ def train(idx, args, learning_network, target_network, optimizer, lock, counter)
             to_goal = []
             goal = 0
         # if time is exceeded -> break the loop
-        can_continue = counter.value <= args.max_steps and worker_timestep <= max_worker_steps and status !=SERVER_DOWN
+        can_continue = counter.value <= args.max_steps\
+                       and worker_timestep <= max_worker_steps\
+                       and status !=SERVER_DOWN \
+                       and episode_num <= args.num_episodes # lets run just 8K episodes
     # finish the game
     hfo_env.quitGame()
     # save the network it stopped with
