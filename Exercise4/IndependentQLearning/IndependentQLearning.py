@@ -17,7 +17,7 @@ class IndependentQLearningAgent(Agent):
         self.discount = discountFactor
         self.init_lr = learningRate
         self.init_ep = epsilon
-        self.min_ep = 0.2
+        self.min_ep = 0.05
         self.setEpsilon(epsilon)
         self.q = defaultdict(lambda: initVals)
         self.action = None
@@ -84,8 +84,8 @@ class IndependentQLearningAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        lr = max(0.02, self.init_lr * 0.9 ** (numTakenActions / 5000))
-        eps = max(self.min_ep, self.init_ep * 0.99 ** (numTakenActions / 2000)) #2000
+        lr = max(0.02, self.init_lr * 0.93 ** (episodeNumber / 1700))
+        eps = max(self.min_ep, self.init_ep * 0.9 ** (episodeNumber / 1050)) #2000
         return lr, eps
 
 
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     MARLEnv = DiscreteMARLEnvironment(numOpponents=args.numOpponents, numAgents=args.numAgents)
     agents = []
     for i in range(args.numAgents):
-        agent = IndependentQLearningAgent(learningRate=0.2, discountFactor=0.99, epsilon=0.8) # 0.8
+        agent = IndependentQLearningAgent(learningRate=0.1, discountFactor=0.99, epsilon=1) # 0.8
         agents.append(agent)
 
     numEpisodes = args.numEpisodes

@@ -20,7 +20,7 @@ parser.add_argument('--num-episodes', type=int, default=8000, metavar='N',
                     help='Number of episodes per agent')
 parser.add_argument('--init-epsilon', type=float, default=0.5, metavar='N',
                     help='Number of episodes per agent')
-parser.add_argument('--min_epsilon', type=float, default=1e-1, metavar='N',
+parser.add_argument('--min_epsilon', type=float, default=0.05, metavar='N',
                     help='Number of episodes per agent')
 parser.add_argument('--tgt-net-update-freq', type=int, default=400, metavar='N',
                     help='Number of episodes per agent')

@@ -105,7 +105,7 @@ class WolfPHCAgent(Agent):
         self.lose_delta = loseDelta
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
-        lr = self.learning_rate * 0.9 ** (numTakenActions / 5000)
+        lr = max(0.01, self.init_lr * 0.99 ** (episodeNumber / 30000))
         return self.lose_delta, self.win_delta, lr
 
 
@@ -130,10 +130,11 @@ if __name__ == '__main__':
     numEpisodes = args.numEpisodes
     numTakenActions = 0
     goal_scored = 0
+    goals = []
     for episode in range(numEpisodes):
         status = ["IN_GAME", "IN_GAME", "IN_GAME"]
         observation = MARLEnv.reset()
-
+        num_steps = 0
         while status[0] == "IN_GAME":
             for agent in agents:
                 loseDelta, winDelta, learningRate = agent.computeHyperparameters(numTakenActions, episode)
@@ -151,7 +152,7 @@ if __name__ == '__main__':
                 agentIdx += 1
             nextObservation, reward, done, status = MARLEnv.step(actions)
             numTakenActions += 1
-
+            num_steps += 1
             agentIdx = 0
             for agent in agents:
                 agent.setExperience(agent.toStateRepresentation(perAgentObs[agentIdx]), actions[agentIdx],
@@ -163,7 +164,13 @@ if __name__ == '__main__':
                 agentIdx += 1
 
             observation = nextObservation
-        if status[0] == "GOAL":
+        if status[0] == 'GOAL':
             goal_scored += 1
+            goals.append(num_steps)
         if (episode+1) % 500 == 0:
-            print('Episode {} scored {}, accuracy {}'.format(episode+1, goal_scored, goal_scored*100/episode+1))
+            print(learningRate)
+            print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
+                                                                               goal_scored, goal_scored*100/500,
+                                                                               np.mean(goals)))
+            goal_scored = 0
+            goals = []

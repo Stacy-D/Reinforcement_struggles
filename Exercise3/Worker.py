@@ -47,6 +47,7 @@ def train(idx, args, learning_network, target_network, optimizer, lock, counter)
             # observe next
             next_obs_tensor, reward, done, status, info = hfo_env.step(action)
             y = computeTargets(reward, next_obs_tensor, args.discount, done, target_network)
+            # compute predictions again for the best action. Here we change params
             q_next = computePrediction(obs_tensor, action_idx, worker_network)
             # put new state
             obs_tensor = next_obs_tensor
@@ -61,6 +62,8 @@ def train(idx, args, learning_network, target_network, optimizer, lock, counter)
                 to_goal.append(ep_steps)
             with lock:
                 counter.value += 1
+                if counter.value % args.checkpoint_time == 0:
+                    saveModelNetwork(learning_network, args.checkpoint_dir + '_{}'.format(counter.value))
             # if terminal or time to update network
             if done or worker_timestep % args.val_net_update_freq == 0:
                 worker_network.zero_grad()
@@ -83,6 +86,12 @@ def train(idx, args, learning_network, target_network, optimizer, lock, counter)
 
         if episode_num % 500 == 0:
             logger.info('Global - {}, Local - {}, Episode - {}, Scored {}, Time avg {}'.format(counter.value,
+                                                                                               worker_timestep,
+                                                                                               episode_num,
+                                                                                               goal,
+                                                                                               np.mean(to_goal)))
+            print('ID {} Global - {}, Local - {}, Episode - {}, Scored {}, Time avg {}'.format(idx,
+                                                                                               counter.value,
                                                                                                worker_timestep,
                                                                                                episode_num,
                                                                                                goal,
@@ -147,9 +156,10 @@ def update_network(target_network, value_network):
     for target_param, param in zip(target_network.parameters(), value_network.parameters()):
         target_param.data.copy_(param.data)
 
+
 def select_action(states, value_network, current_steps, final_step, args, eps):
     sample = random.random()
-    epsilon = eps - float(current_steps) / final_step * (eps - args.min_epsilon)
+    epsilon = max(args.min_epsilon, eps - float(current_steps) / final_step * (eps - args.min_epsilon))
     if sample > epsilon:
         with torch.no_grad():
             _, action = torch.Tensor([computePrediction(states, act, value_network).item()
