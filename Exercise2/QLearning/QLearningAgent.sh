@@ -4,8 +4,8 @@
 # Cannot run an environment where defending agents exist but none are playing
 # goalkeeper
 NUM_EPISODES=5000
-PORT=8123
-./../../../bin/HFO --defense-agents=2 --offense-agents=1 --offense-on-ball 11 --trials $NUM_EPISODES --deterministic --discrete=True --frames-per-trial 2000 --untouched-time 2000 &
+PORT=8000
+./../../../bin/HFO --port=$PORT --defense-agents=2 --offense-agents=1 --offense-on-ball 11 --trials $NUM_EPISODES --deterministic --headless --discrete=True --frames-per-trial 2000 --untouched-time 2000 &
 sleep 5
 ./DiscreteHFO/Initiator.py --numTrials=$NUM_EPISODES --numPlayingDefenseNPCs=1 --numAgents=1 &
 echo "Environment Initialized"

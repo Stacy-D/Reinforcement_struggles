@@ -1,124 +1,64 @@
-# Exercise 2 - Q-Learning, SARSA, and first-visit MC control with soft policies
+# Exercise 2 - Q-Learning Methods
 
-In this exercise, your task is to implement an attacking agent in the discretized Half Field Offense (HFO) domain. Your agent will be controlled using Q-Learning (**Section 6.5 of the book**), SARSA (**Section 6.4 of the book**), and first visit Monte Carlo control with soft policies (**Algorithm in page 101 of the book**). 
+You are required to implement the Q-Learning algorithm using the codes provided in `QLearningBase.py`. Before you proceed, install the HFO Domain first by following the necessary steps outlined in `Exercise2/README.md`. Your task is to extend `QLearningBase.py` by implementing functions that have yet been implemented.
 
-Just like in Exercise 1, the environment is a gridworld where each position is associated with a probability of scoring a goal. Additionally, defending players are positioned in parts of the environment and act as obstacles. Episodes always end when the agent selects the **KICK** action. If an agent manages to score a goal in an episode, the agent receives a reward of **+1**. The agent will be punished with a penalty if it moves into a grid location occupied by a defending player. The position of defending players will not change during the course of each episode. 
+## Specifications
+### Automarking requirements
+To ensure that your codes can be used by the marking script, ensure that all the necessary functions have been implemented. To check whether these implementations are correct, use the code snippet given in `__main__` to test your implementation. This code snippet provides an outline of how your implemented functions will interact to train a Q-Learning agent. If you just modify the number of episodes and the hyperparameters for training, you can use this code to train a Q-Learning agent.
 
-Full codes for the discretized HFO domain can be found in the `DiscreteHFO` folder. In particular, `DiscreteHFO/HFOAttackingPlayer.py` contains the implementation of the interface between the HFO domain and your agent controller. 
+Additionally, **ensure that the initial Q-Values of all state-action pairs are initialized to zero prior to training**. Although you can technically use any initialization value for Q-Learning, we require this as a means for unit testing your implementations.
 
-## Setup and Requirements
+### Implemented Functions
+#### `__init__(self, learningRate, discountFactor, epsilon)`
+This init function should initialize all the necessary parameters for training a Q-Learning Agent. This includes the learning rate, discount factor, and the epsilon value (if you use an epsilon greedy exploration strategy). This function will only be called once at the very beginning when you initialize agents for training.
 
+#### `learn()` - Used in Automarking
+This is the most important function you need to implement in this task. This function has no input parameters. On the other hand, this method **must** return a single scalar that specifies the change **(value after update subtracted by value before update)** in updated state-action value after you've trained your agents using Q-Learning's update. It will be used by the automarker to compare the correctness of your implementation against the solution. **This function has the same functionality as line 8 in the books' Q-Learning pseudocode**
 
-A lot of students have noted that they ran into installation problems on DICE. As an alternative to DICE, you can also install HFO on the MLP cluster. However, if trouble persists, we encourage students to contact the demonstrators directly or visit the demonstration sessions that are going to be held in the following weeks. We do not provide any guarantee that this will work on your personal computers, but we guarantee that it will work in either DICE or the MLP clusters and will help troubleshoot any problems encountered for installing in DICE or the MLP clusters.
+#### `act()`
+This function will be used to choose the actions that your agents will use when faced with a state. It should only return the action that should be taken by the agent at the current state. In general, this will have the same functionality as **line 6 in the books' Q-Learning pseudocode.**
 
-To access DICE or the MLP servers from your personal computers, use the following commands for DICE:
+#### `toStateRepresentation(state)`
+You might want to use a different representation compared to the ones provided by the environment. This will provide a problem to the automarker. Therefore, you should implement a function that maps the raw state representation into the the state representation that you are using in your implementation. This function will receive a state and outputs it's value under the representations that you are using in your implementations. Additionally, this state representation **must be able to be used as keys of a python dictionary** since the marking tools will use this to check the correctness of your algorithm.
+
+#### `setState(state)`
+This function will be used to provide the agents you're controlling with the current state information. It will receive the state representation from the environment as an input. On the other hand, this does not need to output anything. **This is generally equivalent to line 9 of the Q-Learning pseudocode given in the book.**
+
+#### `setExperience(state, action, reward, status, nextState)`
+Once an agent executes an action, it will receive the rewards, status, and next states resulting from that action. Use this method to set these data to prepare your agent to learn using the Q-Learning update. **This is generally equivalent to line 7 of the Q-Learning pseudocode given in the book**
+
+#### `reset()`
+You might want to reset some states of an agent at the beginning of each episode. Use this function to do that. This function does not require any inputs. Additionally, it also does not provide any outputs.
+
+#### `setLearningRate(learningRate)` and `setEpsilon(epsilon)`
+This function should be used to set the learning rate and the epsilon (if you are using epsilon greedy) that you use during training. 
+
+#### `computeHyperparameters(numTakenActions, episodeNumber)`
+This function should return a tuple indicating the learning rate and epsilon used at a certain timestep. This allows you to schedule the values of your hyperparameters and change it midway of training.
+
+### Training process
+To see how your implemented function interact with each other to train the agent, check the `__main__` function inside `QLearningBase.py`. Make sure that you can successfully train your agent using the codes inside `__main__` to ensure that your implementations are correct. A similar sequence of commands with those provded in`__main__` is also going to be used in the marking process.
+
+## Marking details
+### Performance marking
+Using similar codes as what you've seen in `__main__`, we are going to run your agent on a randomly sampled MDP and compare it's performance to our solution. For details on the experiment, refer to the **Marking** section in Exercise 2's README.
+
+### Unit test marking
+We compare the results of updates from `learn()`. This function should return the difference between the value of the updated state-action pair after and before the update. (Q(s_t,a_t)(t+1) - Q(s_t,a_t)(t)) 
+
+As an example, let's say that an agent is exposed to the following sequence of experience:
 ```
-ssh -X <UUN>@student.ssh.inf.ed.ac.uk
-ssh -X student.compute
+Timestep Number, State, Action, Reward, Next State
+1, ((1,1),(2,1)), MOVE_RIGHT, -0.4, ((2,1),(2,1))
+2, ((2,1),(2,1)), MOVE_LEFT, 0.0, ((1,1),(2,1))
+3, ((1,1),(2,1)), KICK, 1.0, GOAL
 ```
 
-Or use these commands for working in the MLP clusters:
-```
-ssh -X <UUN>@student.ssh.inf.ed.ac.uk
-ssh -X <mlp1/mlp2>
-```
-
-The **-X** flags are important if you want to display the visualizations in your local computer. Otherwise, you can actually remove them when connecting to the clusters. 
-
-All the necessary dependencies of HFO, like **qt4** and **boost** have already been installed in DICE and the MLP clusters. To install the HFO environment, create a virtual environment that contains all the packages that you might need for running the task:
-
-```
-mkvirtualenv --python=`which python3` <your env name>
-workon <your env name>
-# Run this to install all the packages you might find necessary
-pip install <packages>
-```
-
-Then, you just need to clone the HFO environment using the following command:
-```
-git clone https://github.com/raharrasy/HFO.git
-```
-
-Afterwards, follow the full installation intructions and documentation of this environment. This can be seen [in this repository](https://github.com/raharrasy/HFO). Finally, after installing the environment, clone this repository into the `example` directory in the `HFO` folder using the following commands:
-
-```
-cd HFO/example
-git clone https://github.com/raharrasy/RL2019-BaseCodes.git
-```
-
-## Working on Task 2
-
-### Minimum working example
-
-A minimum working example of how the agent interacts with the environment is provided in `RandomAgentExample/DiscretizedRandomAttackingController.py`
-
-To start this task, you must first understand how to connect your agent to the HFO server. In the working example, this is provided in line 19-20. At the beginning of each episode, the agent will then need to get an initial state from the environment. An example on how to do this is provided in line 26.
-
-You then need to implement algorithms that choose actions to take given a certain state. Then, pass the selected action through the provided `step` function in line 30. As a response, the environment will respond by providing your agent with the next state, reward, and episode completion information. 
-
-
-To run your implementation and display the environment through the visualizer, do the following steps:
+Assuming an initial value of 0 for each state-action pair, a learning rate of 0.1 and a discount rate of 1, these should be the outputs of the learn functions at the end of each timestep :
 
 ```
-# Move to the example directory in your HFO folder and clone the latest code base
-cd HFO/example
-git clone https://github.com/raharrasy/RL2019-BaseCodes.git
-# Move to the directory that contains the code base for the algorithm you'd like to implement
-cd RL2019-BaseCodes/Exercise2/<Algorithm Code Base Directory>
-cp * ..
-cd ..
-./<Caller for desired algorithm>.sh
-```  
-
-## Marking
-Marking will be based on the correctness of your implementations and the performance of your agents. 
-
-To examine the correctness of the implementations, we will require you to implement functions that output specific values related to the algorithm being implemented. To find these functions and what they are supposed to output, refer to the README files inside each specific algorithm that you are supposed to implement. Additionally, we've also provided a small section of code in the **main** functions in each python files to provide information on how the functions are supposed to interact. You **must implement your agents such that the sequence of commands in the main function can train your agents**.
-
-On the **performance marking**, we will do several experiments under the same MDP where we **run the agents for 5000 episodes** using commands that are similar to what has been provided in the **main functions**. **In these experiments, we guarantee that the size of the grid will be 6x5, there will only be a single defender, and the location of the defender does not change across the 5000 episodes**. Additionally, we also guarantee that **in each experiment we will store the performance of your agents in episodes that are divisible by 500 and average this value across experiments. We will then make a plot of the agent performance and compare it with our solutions. In 5000 episodes, given good hyperparameter settings, your agents should be able to reach performance that is close to optimal.**
-
-## Additional Information
-
-### Implemented Files (**Contains functions to be implemented**)
-1. `QLearning/QLearningBase.py`
-2. `MonteCarlo/MonteCarloBase.py`
-3. `SARSA/SARSABase.py`
-
-### Environment Files (**Should not be modified**)
-1. `DiscreteHFO/HFOAttackingPlayer.py`
-   - File to establish connections with HFO and preprocess state representations gathered from the HFO domain.
-2. `DiscreteHFO/HFODefendingPlayer.py`
-   - File to control defending player inside the HFO environment. 
-3. `DiscreteHFO/HFOGoalkeepingPlayer.py`
-   - File to control Goalkeeper inside the HFO environment. HFO environment cannot run without a goalkeeper. 
-4. `DiscreteHFO/DiscretizedDefendingPlayer.py`
-   - File to initialize the defending player.
-5. `DiscreteHFO/Goalkeeper.py`
-   - File to initialize the Goalkeeper.
-   
-### Caller Files (**Can be modified, adapt to your existing directories if necessary**)
-1. `QLearning/QLearningAgent.sh`
-   - This file runs all the necessary files to initialize a discrete HFO domain and run a Q-Learning agent.
-2. `SARSA/SARSAAgent.sh`
-   - This file runs all the necessary files to initialize a discrete HFO domain and run a SARSA agent.
-3. `MonteCarlo/MonteCarlo.sh`
-   - This file runs all the necessary files to initialize a discrete HFO domain and run a Monte Carlo agent.
-
-## Environment Details
-   
-### State Space
-The environment is modelled as a 6x5 grid. The grid cell with `(0,0)` coordinate is located in the top left part of the field. At each timestep, the agent will be given a state representation, in the form of a list, which has information on the defending players' location and the agent's own location on the grid. The first item in the list is the agent's location and the rest are the location of the defending players. 
-
-The location of the goal is not modelled inside the grid. Therefore, agents cannot dribble into the goal and must rely on the `KICK` action to score goals. 
-
-### Action Spaces
-Agents are equipped with a set of discrete actions. To move to adjacent grids, agents can use the `DRIBBLE_UP`,`DRIBBLE_DOWN`,`DRIBBLE_LEFT`, and `DRIBBLE_RIGHT` actions. Additionally, the `KICK` action enables the agents to shoot the ball toward the goal. 
-
-### Reward Functions
-Agents only receive non-zero rewards at the completion of each episode. In this case, a goal will result in a reward of **+1**. However, occupying the same grid as defending players will result in a penalty.
-
-### Environment Dynamics
-Environment transitions resulting from the actions are stochastic. For the dribbling actions, there will be a small probability for agents to end up dribbling into an adjacent (but wrong) grid. There is also the possibility of agent's kicks going wayward from the goal after executing the `KICK` action. This probability of kicking the ball depends on the location in the grid that the agent executes the `KICK` action from.
-
-## Status
-Status are integers that denote certain terminal events in the game. It will always be 0 when the agents are in the middle of a game. Other numbers might denote different events like a goal successfully scored, ball kicked out of bounds, or episodes running out of time. Full information of the possible status values for the HFO environment can be seen at `HFO/bin/HFO` script inside the HFO codes given in the original HFO repository.
+Timestep Number, learn Output
+1, -0.04 (Calculate the difference in value of < ((1,1),(2,1)), MOVE_RIGHT > before and after update )
+2, 0.0 (Calculate the difference in value of < ((2,1),(2,1)), MOVE_LEFT > before and after update )
+3, 0.1 (Calculate the difference in value of < ((1,1),(2,1)), KICK > before and after update )
+```

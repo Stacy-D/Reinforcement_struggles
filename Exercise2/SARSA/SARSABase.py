@@ -8,6 +8,7 @@ import numpy as np
 from collections import defaultdict
 import random
 
+
 class SARSAAgent(Agent):
     def __init__(self, learningRate, discountFactor, epsilon, initVals=0.0):
         super(SARSAAgent, self).__init__()
@@ -15,23 +16,20 @@ class SARSAAgent(Agent):
         self.discount = discountFactor
         self.init_lr = learningRate
         self.init_ep = epsilon
-        self.min_ep = 0.005
+        self.min_ep = 0.15
         self.setEpsilon(epsilon)
         self.q = defaultdict(lambda: initVals)
         self.prev_act = None
         self.action = None
-        self.state = None
         self.prev_state = None
         self.cur_state = None
         self.status = None
-        self.old_val = 0
-        self.td_target = 0
+        self.error = 0
         self.reward = 0
-        self.decay_factor = (self.init_ep - self.min_ep)/2500
 
     def learn(self):
         # value after update subtracted by value before update
-        td_update = self.learning_rate*(self.td_target - self.old_val)
+        td_update = self.learning_rate*self.update
         self.q[(self.prev_state, self.prev_act)] += td_update
         return td_update
 
@@ -39,18 +37,17 @@ class SARSAAgent(Agent):
         #  return the action that should be taken by the agent at the current state
         sample = random.random()
         if sample > self.epsilon:
-            val = 0
-            act = []
-            for a in self.possibleActions:
-                pos_val = self.q[(self.cur_state, a)]
-                if pos_val > val:
-                    act = [a]
-                elif pos_val == val:
-                    act.append(a)
-            # if there is multiple actions with max choose on random
-            return random.sample(act, 1)[0]
+            return self.get_best_action(self.cur_state)
         else:
             return self.possibleActions[random.randint(0, 4)]
+
+    def get_best_action(self, state):
+        val = float('-inf')
+        act = self.possibleActions[0]
+        for a in self.possibleActions:
+            appr = self.q[(state, a)]
+            val, act = (appr, a) if appr > val else (val, act)
+        return act
 
     def setState(self, state):
         # no output
@@ -60,25 +57,24 @@ class SARSAAgent(Agent):
     def setExperience(self, state, action, reward, status, nextState):
         #  prepare your agent to learn using the SARSA update
         if self.action is None:
-            self.old_val = 0
+            old_val = 0
         else:
-            self.old_val = self.q[(state, self.action)]
-        self.td_target = self.reward + self.discount*self.q[(nextState, action)] - self.old_val
+            old_val = self.q[(state, self.action)]
+        self.update = self.reward + self.discount * self.q[(nextState, action)] - old_val
         # update vars
         self.prev_state = state
         self.cur_state = nextState
         self.prev_act = self.action
         self.action = action
-        self.reward = reward
         self.status = status
+        self.reward = reward
 
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
         k = 0.01
-        lr = self.init_lr * 0.99**(numTakenActions/100)
-        eps = max(self.min_ep, self.init_ep - numTakenActions*self.decay_factor)
-        print((lr, eps))
+        lr = self.init_lr * 0.99**(numTakenActions/1000)
+        eps = max(self.min_ep, self.init_ep * 0.99**(numTakenActions/(50 * (episodeNumber + 1))))
         return lr, eps
 
     def toStateRepresentation(self, state):
@@ -89,12 +85,10 @@ class SARSAAgent(Agent):
         # reset some states of an agent at the beginning of each episode.
         self.prev_act = None
         self.action = None
-        self.state = None
         self.prev_state = None
         self.cur_state = None
         self.status = None
-        self.old_val = 0
-        self.td_target = 0
+        self.update = 0
         self.reward = 0
 
     def setLearningRate(self, learning_rate):
@@ -122,10 +116,12 @@ if __name__ == '__main__':
     hfoEnv.connectToServer()
 
     # Initialize a SARSA Agent
-    agent = SARSAAgent(0.1, 0.95, 1)
+    agent = SARSAAgent(0.2, 0.95, 0.8)
 
     # Run training using SARSA
     numTakenActions = 0
+    goal_scored = 0
+    goals = []
     for episode in range(numEpisodes):
         agent.reset()
         status = 0
@@ -133,7 +129,7 @@ if __name__ == '__main__':
         observation = hfoEnv.reset()
         nextObservation = None
         epsStart = True
-
+        num_steps = 0
         while status == 0:
             learningRate, epsilon = agent.computeHyperparameters(numTakenActions, episode)
             agent.setEpsilon(epsilon)
@@ -143,9 +139,8 @@ if __name__ == '__main__':
             agent.setState(agent.toStateRepresentation(obsCopy))
             action = agent.act()
             numTakenActions += 1
-
+            num_steps += 1
             nextObservation, reward, done, status = hfoEnv.step(action)
-            print(obsCopy, action, reward, nextObservation)
             agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status,
                                 agent.toStateRepresentation(nextObservation))
 
@@ -158,3 +153,12 @@ if __name__ == '__main__':
 
         agent.setExperience(agent.toStateRepresentation(nextObservation), None, None, None, None)
         agent.learn()
+
+        if status == 1:
+            goal_scored += 1
+            goals.append(num_steps)
+        if (episode+1) % 100 == 0:
+            print((learningRate, epsilon))
+            print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
+                                                                               goal_scored, goal_scored*100/episode+1,
+                                                                               np.mean(goals)))

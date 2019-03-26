@@ -1,6 +1,5 @@
 import random
 import copy
-import pygame
 
 class DiscreteMARLEnvironment(object):
 	def __init__(self, numOpponents=0, numAgents=0, collisionPenalty = 0.4, visualize=False):
@@ -19,6 +18,7 @@ class DiscreteMARLEnvironment(object):
 		self.totalTimesteps = 500
 		self.visualize = visualize
 		if self.visualize:
+			import pygame
 			pygame.init()
 			WINDOW_SIZE = (255, 255)
 			self.screen = pygame.display.set_mode(WINDOW_SIZE)

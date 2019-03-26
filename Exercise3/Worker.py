@@ -3,8 +3,8 @@ import torch.nn as nn
 from Environment import HFOEnv
 import random
 from hfo import *
-
-epsilon_list = [0.2, 0.3, 0.4, 0.5, 0.8, 0.9, 1]
+import csv
+epsilon_list = [0.2, 0.3, 0.4, 0.5, 0.8]
 
 
 def train(idx, args, value_network, target_network, optimizer, lock, counter):
@@ -19,49 +19,58 @@ def train(idx, args, value_network, target_network, optimizer, lock, counter):
     eps = random.sample(epsilon_list, 1)[0]
     t = 0
     mse = nn.MSELoss()
-    while episode_num < args.num_episodes:
-        obs_tensor = hfo_env.reset()
-        done = False
-        loss = 0
-        reward_ep = 0
-        while not done:
-            action_idx = select_action(obs_tensor, value_network, t, args.num_episodes*args.per_episode, args, eps)
+    with open('./thread_{}.out'.format(idx), 'w', encoding='utf-8') as f:
+        csv_writer = csv.writer(f, delimiter=',')
+        csv_writer.writerow(['id', 'global', 'local', 'num_steps', 'status'])
+        while episode_num < args.num_episodes:
+            obs_tensor = hfo_env.reset()
+            done = False
+            loss = 0
+            reward_ep = 0
+            ep_steps = 0
+            while not done:
+                action_idx = select_action(obs_tensor, value_network, t, args.num_episodes*args.per_episode, args, eps)
 
-            action = hfo_env.possibleActions[action_idx]
-            next_obs_tensor, reward, done, status, info = hfo_env.step(action)
-            reward_ep += 1
-            y = computeTargets(reward, next_obs_tensor, discount, done, target_network)
-            q_next = computePrediction(obs_tensor, action_idx, value_network)
-            loss += mse(y, q_next)
-            # put new state
-            obs_tensor = next_obs_tensor
-            # new local step
-            t += 1
-            # update global step
-            with lock:
-                counter.value += 1
-            if t % args.tgt_net_update_freq == 0:
-                update_network(target_network, value_network)
-            if counter.value % args.checkpoint_time == 0:
-                saveModelNetwork(value_network, args.checkpoint_dir+'_{}'.format(counter.value))
-            # update online network
-            if t % args.val_net_update_freq == 0 or done:
-                value_network.zero_grad()
-                optimizer.zero_grad()
+                action = hfo_env.possibleActions[action_idx]
+                next_obs_tensor, reward, done, status, info = hfo_env.step(action)
+                reward_ep += reward
+                y = computeTargets(reward, next_obs_tensor, discount, done, target_network)
+                q_next = computePrediction(obs_tensor, action_idx, value_network)
+                loss += mse(y, q_next)
+                # put new state
+                obs_tensor = next_obs_tensor
+                # new local step
+                t += 1
+                ep_steps+=1
+                # update global step
+                with lock:
+                    counter.value += 1
+                if t % args.tgt_net_update_freq == 0:
+                    update_network(target_network, value_network)
+                with lock:
+                    if counter.value % args.checkpoint_time == 0:
+                        saveModelNetwork(value_network, args.checkpoint_dir+'_{}'.format(counter.value))
+                # update online network
+                if t % args.val_net_update_freq == 0 or done:
+                    value_network.zero_grad()
+                    optimizer.zero_grad()
 
-                loss.backward()
-                optimizer.step()
-                loss = 0
-            if counter.value >= args.max_steps:
-                saveModelNetwork(value_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
-            if t % args.per_episode == 0:  # end of episodes
+                    loss.backward()
+                    optimizer.step()
+                    loss = 0
+                with lock:
+                    if counter.value >= args.max_steps:
+                        saveModelNetwork(value_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
+                if t % args.per_episode == 0:  # end of episodes
+                    break
+            csv_writer.writerow([idx, counter.value , t, ep_steps, status])
+            episode_num += 1
+            # end of game for an agent
+            if status == SERVER_DOWN:
+                hfo.quitGame()
+                with lock:
+                    saveModelNetwork(value_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
                 break
-
-        episode_num += 1
-        # end of game for an agent
-        if status == SERVER_DOWN:
-            hfo.quitGame()
-            break
 
 def computeTargets(reward, nextObservation, discountFactor, done, targetNetwork):
     """

@@ -8,7 +8,7 @@ import argparse
 import torch
 import time
 parser = argparse.ArgumentParser(description='One step Q-learning')
-parser.add_argument('--num-processes', default=8, type=int, help='Number of processes to train the agents in')
+parser.add_argument('--num-processes', default=1, type=int, help='Number of processes to train the agents in')
 parser.add_argument('--lr', type=float, default=1e-4, metavar='LR',
                     help='learning rate (default: 0.01)')
 parser.add_argument('--cuda', action='store_true', default=False,
