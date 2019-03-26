@@ -84,7 +84,7 @@ class JointQLearningAgent(Agent):
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
         lr = max(0.001, self.init_lr * 0.9 ** (numTakenActions / 5000))
-        eps = max(self.min_ep, self.init_ep * 0.99 ** (numTakenActions / 500))
+        eps = max(self.min_ep, self.init_ep * 0.99 ** (numTakenActions / 2000))
         return lr, eps
 
 
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     numAgents = args.numAgents
     numEpisodes = args.numEpisodes
     for i in range(numAgents):
-        agent = JointQLearningAgent(learningRate=0.1, discountFactor=0.9, epsilon=1.0, numTeammates=args.numAgents - 1)
+        agent = JointQLearningAgent(learningRate=0.2, discountFactor=0.99, epsilon=0.8, numTeammates=args.numAgents - 1)
         agents.append(agent)
 
     numEpisodes = numEpisodes

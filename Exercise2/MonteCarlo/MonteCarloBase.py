@@ -42,7 +42,7 @@ class MonteCarloAgent(Agent):
         return self.q, update
 
     def toStateRepresentation(self, state):
-        return state[0]
+        return str(state)
 
     def setExperience(self, state, action, reward, status, nextState):
         self.current_episode.append((state, action, reward))

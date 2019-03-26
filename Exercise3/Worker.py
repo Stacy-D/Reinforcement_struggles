@@ -1,76 +1,103 @@
 import torch
 import torch.nn as nn
+import logging
+from Networks import ValueNetwork
 from Environment import HFOEnv
 import random
 from hfo import *
-import csv
+import numpy as np
 epsilon_list = [0.2, 0.3, 0.4, 0.5, 0.8]
 
 
-def train(idx, args, value_network, target_network, optimizer, lock, counter):
+def train(idx, args, learning_network, target_network, optimizer, lock, counter):
+    # init port & seed for the thread based on id val
     port = 8100 + 10 * idx  # init
-    seed = idx*100 + 123
+    seed = idx*113 + 923
     torch.manual_seed(seed)
+    logger = logging.getLogger(str(port)+__name__)
+    logger.info('Init')
+
+    worker_network = ValueNetwork(15, 4)
+    worker_network.load_state_dict(learning_network.state_dict())
+    # change init
+    # init env
     hfo_env = HFOEnv(numTeammates=0, numOpponents=1, port=port, seed=seed)
     hfo_env.connectToServer()
-    print('Port {} connected'.format(port))
-    discount = 0.99
+    logger.info('Port {} connected'.format(port))
     episode_num = 0
     eps = random.sample(epsilon_list, 1)[0]
-    t = 0
-    mse = nn.MSELoss()
-    with open('./thread_{}.out'.format(idx), 'w', encoding='utf-8') as f:
-        csv_writer = csv.writer(f, delimiter=',')
-        csv_writer.writerow(['id', 'global', 'local', 'num_steps', 'status'])
-        while episode_num < args.num_episodes:
-            obs_tensor = hfo_env.reset()
-            done = False
-            loss = 0
-            reward_ep = 0
-            ep_steps = 0
-            while not done:
-                action_idx = select_action(obs_tensor, value_network, t, args.num_episodes*args.per_episode, args, eps)
+    worker_timestep = 0
+    mse_loss = nn.MSELoss()
+    max_worker_steps = args.max_steps / args.num_processes
+    can_continue = True
+    goal = 0
+    to_goal = []
+    while can_continue:
+        # run episode
+        obs_tensor = hfo_env.reset()
+        done = False
+        loss = 0
+        reward_ep = 0
+        ep_steps = 0
+        upd_steps = 0
+        while not done:
+            # select action based on greedy policy
+            action_idx = select_action(obs_tensor, worker_network, worker_timestep, max_worker_steps, args, eps)
+            action = hfo_env.possibleActions[action_idx]
+            # observe next
+            next_obs_tensor, reward, done, status, info = hfo_env.step(action)
+            y = computeTargets(reward, next_obs_tensor, args.discount, done, target_network)
+            q_next = computePrediction(obs_tensor, action_idx, worker_network)
+            # put new state
+            obs_tensor = next_obs_tensor
+            # update episode stats
+            loss += mse_loss(y, q_next)
+            reward_ep += reward
+            upd_steps += 1
+            ep_steps += 1
+            worker_timestep += 1
+            if status == 1:
+                goal += 1
+                to_goal.append(ep_steps)
+            with lock:
+                counter.value += 1
+            # if terminal or time to update network
+            if done or worker_timestep % args.val_net_update_freq == 0:
+                worker_network.zero_grad()
+                optimizer.zero_grad()
+                # take mean loss
+                loss /= upd_steps
+                loss.backward()
+                sync_grad(learning_network, worker_network)
+                optimizer.step()
+                worker_network.load_state_dict(learning_network.state_dict())
+                loss = 0
+                upd_steps = 0
+            # perform update of target network
+            if counter.value % args.tgt_net_update_freq == 0:
+                target_network.load_state_dict(learning_network.state_dict())
 
-                action = hfo_env.possibleActions[action_idx]
-                next_obs_tensor, reward, done, status, info = hfo_env.step(action)
-                reward_ep += reward
-                y = computeTargets(reward, next_obs_tensor, discount, done, target_network)
-                q_next = computePrediction(obs_tensor, action_idx, value_network)
-                loss += mse(y, q_next)
-                # put new state
-                obs_tensor = next_obs_tensor
-                # new local step
-                t += 1
-                ep_steps+=1
-                # update global step
-                with lock:
-                    counter.value += 1
-                if t % args.tgt_net_update_freq == 0:
-                    update_network(target_network, value_network)
-                with lock:
-                    if counter.value % args.checkpoint_time == 0:
-                        saveModelNetwork(value_network, args.checkpoint_dir+'_{}'.format(counter.value))
-                # update online network
-                if t % args.val_net_update_freq == 0 or done:
-                    value_network.zero_grad()
-                    optimizer.zero_grad()
+            if counter.value % args.checkpoint_time == 0:
+                saveModelNetwork(learning_network, args.checkpoint_dir + '_{}'.format(counter.value))
+        episode_num += 1
 
-                    loss.backward()
-                    optimizer.step()
-                    loss = 0
-                with lock:
-                    if counter.value >= args.max_steps:
-                        saveModelNetwork(value_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
-                if t % args.per_episode == 0:  # end of episodes
-                    break
-            csv_writer.writerow([idx, counter.value , t, ep_steps, status])
-            episode_num += 1
-            # end of game for an agent
-            if status == SERVER_DOWN:
-                hfo.quitGame()
-                with lock:
-                    saveModelNetwork(value_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
-                break
+        if episode_num % 500 == 0:
+            logger.info('Global - {}, Local - {}, Episode - {}, Scored {}, Time avg {}'.format(counter.value,
+                                                                                               worker_timestep,
+                                                                                               episode_num,
+                                                                                               goal,
+                                                                                               np.mean(to_goal)))
+            to_goal = []
+            goal = 0
+        # if time is exceeded -> break the loop
+        can_continue = counter.value <= args.max_steps and worker_timestep <= max_worker_steps and status !=SERVER_DOWN
+    # finish the game
+    hfo_env.quitGame()
+    # save the network it stopped with
+    saveModelNetwork(learning_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
+    logger.info('Finished')
+
+
 
 def computeTargets(reward, nextObservation, discountFactor, done, targetNetwork):
     """
@@ -104,18 +131,21 @@ def computePrediction(state, action, valueNetwork):
     return k.squeeze()
 
 
-# Implement a single call for the forward computation of your Q-Network inside
-# . Note that this should be agnostic to any Q-Network architecture that you're using.
-
 # Function to save parameters of a neural network in pytorch.
 def saveModelNetwork(model, strDirectory):
     torch.save(model.state_dict(), strDirectory)
 
 
+def sync_grad(target_net, worker_net):
+    for shared_param, param in zip(target_net.parameters(), worker_net.parameters()):
+        if shared_param.grad is not None:
+            return
+        shared_param._grad = param.grad.clone()
+
+
 def update_network(target_network, value_network):
     for target_param, param in zip(target_network.parameters(), value_network.parameters()):
         target_param.data.copy_(param.data)
-
 
 def select_action(states, value_network, current_steps, final_step, args, eps):
     sample = random.random()

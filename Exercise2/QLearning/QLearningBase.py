@@ -49,7 +49,7 @@ class QLearningAgent(Agent):
 
     def toStateRepresentation(self, state):
         # change  the representation
-        return state[0]
+        return str(state)
 
     def setState(self, state):
         self.cur_state = state

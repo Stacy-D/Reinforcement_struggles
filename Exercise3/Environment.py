@@ -34,13 +34,13 @@ class HFOEnv(object):
     def startEnv(self):
         if self.numTeammates == 0:
             os.system(
-                "./../../../bin/HFO  --headless --seed {} --defense-npcs=0 --defense-agents={} --offense-agents=1 --trials 8000 --untouched-time 500 --frames-per-trial 500 --port {}  --fullstate & ".format(
+                "./../../../bin/HFO  --headless --seed {} --defense-npcs=0 --defense-agents={} --offense-agents=1 --trials 16000 --untouched-time 500 --frames-per-trial 500 --port {}  --fullstate & ".format(
                     str(self.seed),
                     str(self.numOpponents), str(self.port)))
             print(self.port)
         else:
             os.system(
-                "./../../../bin/HFO --seed {} --defense-agents={} --defense-npcs=0 --offense-npcs={} --offense-agents=1 --trials 8000 --untouched-time 500 --frames-per-trial 500  --headless --port {} --fullstate &".format(
+                "./../../../bin/HFO --seed {} --defense-agents={} --defense-npcs=0 --offense-npcs={} --offense-agents=1 --trials 16000 --untouched-time 500 --frames-per-trial 500  --headless --port {} --fullstate &".format(
                     str(self.seed), str(self.numOpponents), str(self.numTeammates), str(self.port)))
         time.sleep(10)
 
@@ -57,7 +57,7 @@ class HFOEnv(object):
     # establish agent's connection with HFO server
     def connectToServer(self):
         time.sleep(5)
-        os.system("./Goalkeeper.py --numEpisodes=8000 --port={} &".format(str(self.port)))
+        os.system("./Goalkeeper.py --numEpisodes=16000 --port={} &".format(str(self.port)))
         time.sleep(2)
         self.hfo.connectToServer(HIGH_LEVEL_FEATURE_SET, self.config_dir, self.port, self.server_addr, self.team_name,
                                  self.play_goalie)
@@ -97,8 +97,8 @@ class HFOEnv(object):
          base your rewards and states from. Just ensure that you've put the correct choice in line 56 of Environment.py.
         """
         if status == GOAL:
-            reward = 2.0
-        elif status in [CAPTURED_BY_DEFENSE, OUT_OF_BOUNDS]:
+            reward = 1.0
+        elif status in [CAPTURED_BY_DEFENSE, OUT_OF_BOUNDS, OUT_OF_TIME]:
             reward = -1.0
         else:
             reward = 0

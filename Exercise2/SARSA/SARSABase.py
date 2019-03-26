@@ -79,7 +79,7 @@ class SARSAAgent(Agent):
 
     def toStateRepresentation(self, state):
         # change  the representation
-        return state[0]
+        return str(state)
 
     def reset(self):
         # reset some states of an agent at the beginning of each episode.

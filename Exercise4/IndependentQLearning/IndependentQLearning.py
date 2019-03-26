@@ -84,7 +84,7 @@ class IndependentQLearningAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        lr = max(0.02, self.init_lr * 0.99 ** (numTakenActions / 5000))
+        lr = max(0.02, self.init_lr * 0.9 ** (numTakenActions / 5000))
         eps = max(self.min_ep, self.init_ep * 0.99 ** (numTakenActions / 2000)) #2000
         return lr, eps
 
@@ -140,8 +140,10 @@ if __name__ == '__main__':
         if status[0] == 'GOAL':
             goal_scored += 1
             goals.append(num_steps)
-        if (episode+1) % 100 == 0:
+        if (episode+1) % 500 == 0:
             print((learningRate, epsilon))
             print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
-                                                                               goal_scored, goal_scored*100/episode+1,
+                                                                               goal_scored, goal_scored*100/500,
                                                                                np.mean(goals)))
+            goal_scored = 0
+            goals = []
