@@ -17,7 +17,7 @@ class IndependentQLearningAgent(Agent):
         self.discount = discountFactor
         self.init_lr = learningRate
         self.init_ep = epsilon
-        self.min_ep = 0.05
+        self.min_ep = 0.01
         self.setEpsilon(epsilon)
         self.q = defaultdict(lambda: initVals)
         self.action = None
@@ -84,7 +84,7 @@ class IndependentQLearningAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        lr = max(0.02, self.init_lr * 0.93 ** (episodeNumber / 1700))
+        lr = max(0.01, self.init_lr * 0.95 ** (episodeNumber / 1700))
         eps = max(self.min_ep, self.init_ep * 0.9 ** (episodeNumber / 1050)) #2000
         return lr, eps
 

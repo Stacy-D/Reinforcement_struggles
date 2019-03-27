@@ -18,7 +18,7 @@ class JointQLearningAgent(Agent):
         self.team = numTeammates
         self.init_lr = learningRate
         self.init_ep = epsilon
-        self.min_ep = 0.15
+        self.min_ep = 0.01
         self.setEpsilon(epsilon)
         self.q = defaultdict(lambda: initVals)
         self.action = None
@@ -27,22 +27,25 @@ class JointQLearningAgent(Agent):
         self.status = None
         self.update = 0
         self.team_mates = defaultdict(lambda: defaultdict(float))
+        self.n_s = defaultdict(float)
 
     def setExperience(self, state, action, oppoActions, reward, status, nextState):
-        opponent = oppoActions[0]
-        old_val = self.q[(state, (action, opponent))]
+        self.opponent = oppoActions[0]
+        old_val = self.q[(state, (action, self.opponent))]
         #  prepare your agent to learn
         self.update = reward + self.discount*self.get_best_action(nextState)[1] - old_val
         # update vars
         self.prev_state = state
         self.cur_state = nextState
-        self.action = (action, opponent)
+        self.action = (action, self.opponent)
         self.status = status
 
     def learn(self):
         # value after update subtracted by value before update
         td_update = self.learning_rate * self.update
         self.q[(self.prev_state, self.action)] += td_update
+        self.team_mates[self.prev_state][self.opponent] += 1
+        self.n_s[self.prev_state] += 1
         return td_update
 
     def act(self):
@@ -54,7 +57,7 @@ class JointQLearningAgent(Agent):
             return self.possibleActions[random.randint(0, 4)]
 
     def get_teammate(self, state, action):
-        cnt = len(self.team_mates[state])
+        cnt = self.n_s[state]
         if cnt:
             return self.team_mates.get(state)[action] / cnt
         else:
@@ -83,8 +86,8 @@ class JointQLearningAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        lr = max(0.001, self.init_lr * 0.9 ** (numTakenActions / 5000))
-        eps = max(self.min_ep, self.init_ep * 0.99 ** (numTakenActions / 2000))
+        lr = max(0.01, self.init_lr * 0.95 ** (episodeNumber / 1700))
+        eps = max(self.min_ep, self.init_ep * 0.9 ** (episodeNumber / 1050)) #2000
         return lr, eps
 
 
@@ -102,7 +105,7 @@ if __name__ == '__main__':
     numAgents = args.numAgents
     numEpisodes = args.numEpisodes
     for i in range(numAgents):
-        agent = JointQLearningAgent(learningRate=0.2, discountFactor=0.99, epsilon=0.8, numTeammates=args.numAgents - 1)
+        agent = JointQLearningAgent(learningRate=0.1, discountFactor=0.99, epsilon=1, numTeammates=args.numAgents - 1)
         agents.append(agent)
 
     numEpisodes = numEpisodes
@@ -143,8 +146,10 @@ if __name__ == '__main__':
         if status[0] == 'GOAL':
             goal_scored += 1
             goals.append(num_steps)
-        if (episode+1) % 100 == 0:
+        if (episode+1) % 500 == 0:
             print((learningRate, epsilon))
             print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
-                                                                               goal_scored, goal_scored*100/episode+1,
+                                                                               goal_scored, goal_scored*100/500,
                                                                                np.mean(goals)))
+            goal_scored = 0
+            goals = []
