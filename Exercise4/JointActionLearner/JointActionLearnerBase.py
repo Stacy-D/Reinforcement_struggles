@@ -16,9 +16,6 @@ class JointQLearningAgent(Agent):
         self.learning_rate = learningRate
         self.discount = discountFactor
         self.team = numTeammates
-        self.init_lr = learningRate
-        self.init_ep = epsilon
-        self.min_ep = 0.01
         self.setEpsilon(epsilon)
         self.q = defaultdict(lambda: initVals)
         self.action = None
@@ -28,6 +25,11 @@ class JointQLearningAgent(Agent):
         self.update = 0
         self.team_mates = defaultdict(lambda: defaultdict(float))
         self.n_s = defaultdict(float)
+        # hyperparams
+        self.init_lr = 0.3
+        self.init_ep = 0.6
+        self.min_ep = 0.01
+        self.min_lr = 0.01
 
     def setExperience(self, state, action, oppoActions, reward, status, nextState):
         self.opponent = oppoActions[0]
@@ -86,8 +88,8 @@ class JointQLearningAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        lr = max(0.01, self.init_lr * 0.95 ** (episodeNumber / 1700))
-        eps = max(self.min_ep, self.init_ep * 0.9 ** (episodeNumber / 1050)) #2000
+        lr = max(self.min_lr, self.init_lr * 0.95 ** (episodeNumber / 1700))
+        eps = max(self.min_ep, self.init_ep * 0.85 ** (episodeNumber / 2000))
         return lr, eps
 
 
@@ -105,7 +107,7 @@ if __name__ == '__main__':
     numAgents = args.numAgents
     numEpisodes = args.numEpisodes
     for i in range(numAgents):
-        agent = JointQLearningAgent(learningRate=0.1, discountFactor=0.99, epsilon=1, numTeammates=args.numAgents - 1)
+        agent = JointQLearningAgent(learningRate=0.3, discountFactor=0.99, epsilon=0.8, numTeammates=args.numAgents - 1)
         agents.append(agent)
 
     numEpisodes = numEpisodes
@@ -153,3 +155,37 @@ if __name__ == '__main__':
                                                                                np.mean(goals)))
             goal_scored = 0
             goals = []
+
+    numTakenActions = 0
+    goals = []
+    goal_scored = 0
+    for episode in range(500):
+        status = ["IN_GAME", "IN_GAME", "IN_GAME"]
+        observation = MARLEnv.reset()
+        num_steps = 0
+        while status[0] == "IN_GAME":
+            for agent in agents:
+                agent.setEpsilon(0)
+                agent.setLearningRate(learningRate)
+            actions = []
+            stateCopies = []
+            for agentIdx in range(args.numAgents):
+                obsCopy = deepcopy(observation[agentIdx])
+                stateCopies.append(obsCopy)
+                agents[agentIdx].setState(agents[agentIdx].toStateRepresentation(obsCopy))
+                actions.append(agents[agentIdx].act())
+
+            nextObservation, reward, done, status = MARLEnv.step(actions)
+            numTakenActions += 1
+            num_steps += 1
+            observation = nextObservation
+
+        if status[0] == 'GOAL':
+            goal_scored += 1
+            goals.append(num_steps)
+    print((learningRate, epsilon))
+    print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(500,
+                                                                       goal_scored, goal_scored * 100 / 500,
+                                                                       np.mean(goals)))
+    goal_scored = 0
+    goals = []

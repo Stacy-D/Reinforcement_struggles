@@ -23,11 +23,7 @@ class MonteCarloAgent(Agent):
         self.status = None
         self.q = defaultdict(lambda: initVals)
 
-
     def learn(self):
-
-        # complete Q-value table of all states
-        # Q-value estimate after update of the states you've encountered in the episode ordered by their first time appearance in the episode.
         lookup = set()
         filtered_pairs = [((x[0], x[1]), index) for index, x in enumerate(self.current_episode)
                           if (x[0], x[1]) not in lookup and lookup.add((x[0], x[1])) is None]
@@ -64,7 +60,8 @@ class MonteCarloAgent(Agent):
         self.epsilon = epsilon
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
-        eps = max(self.min_ep, self.init_ep * 0.95 ** (numTakenActions / 1000))
+        self.init_ep = 0.85
+        eps = max(0.001, self.init_ep * 0.85 ** (episodeNumber / 110))
         return eps
 
     def get_best_action(self, state):
@@ -112,31 +109,38 @@ if __name__ == '__main__':
     goal_scored = 0
     goals = []
     # Run training Monte Carlo Method
-    for episode in range(numEpisodes):
-        agent.reset()
-        observation = hfoEnv.reset()
-        status = 0
-        num_steps = 0
-        while status == 0:
-            epsilon = agent.computeHyperparameters(numTakenActions, episode)
-            agent.setEpsilon(epsilon)
-            obsCopy = observation.copy()
-            agent.setState(agent.toStateRepresentation(obsCopy))
-            action = agent.act()
-            numTakenActions += 1
-            num_steps += 1
-            nextObservation, reward, done, status = hfoEnv.step(action)
-            agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status,
-                                agent.toStateRepresentation(nextObservation))
-            observation = nextObservation
+    import csv
+    with open('./monte.csv', 'w', encoding='utf-8') as f:
+        csv_writer = csv.writer(f, delimiter=',')
+        csv_writer.writerow(['Episode','scored','accuracy','steps', 'eps'])
+        for episode in range(numEpisodes):
+            agent.reset()
+            observation = hfoEnv.reset()
+            status = 0
+            num_steps = 0
+            while status == 0:
+                epsilon = agent.computeHyperparameters(numTakenActions, episode)
+                agent.setEpsilon(epsilon)
+                obsCopy = observation.copy()
+                agent.setState(agent.toStateRepresentation(obsCopy))
+                action = agent.act()
+                numTakenActions += 1
+                num_steps += 1
+                nextObservation, reward, done, status = hfoEnv.step(action)
+                agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status,
+                                    agent.toStateRepresentation(nextObservation))
+                observation = nextObservation
 
-        agent.learn()
+            agent.learn()
 
-        if status == 1:
-            goal_scored += 1
-            goals.append(num_steps)
-        if (episode+1) % 100 == 0:
-            print(epsilon)
-            print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
-                                                                               goal_scored, goal_scored*100/episode+1,
-                                                                               np.mean(goals)))
+            if status == 1:
+                goal_scored += 1
+                goals.append(num_steps)
+            if (episode+1) % 500 == 0:
+                csv_writer.writerow([episode+1, goal_scored, goal_scored*100/500, np.mean(goals), epsilon])
+                print(epsilon)
+                print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
+                                                                                   goal_scored, goal_scored*100/500,
+                                                                                   np.mean(goals)))
+                goals = []
+                goal_scored = 0

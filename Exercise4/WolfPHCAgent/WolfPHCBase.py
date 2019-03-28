@@ -105,8 +105,11 @@ class WolfPHCAgent(Agent):
         self.lose_delta = loseDelta
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
-        lr = max(0.01, self.init_lr * 0.99 ** (episodeNumber / 30000))
-        return self.lose_delta, self.win_delta, lr
+        self.init_lr = 0.3
+        self.init_win = 0.0025
+        self.init_lose = 0.01
+        lr =  max(0.05, self.init_lr * 0.9 ** (episodeNumber / 4000))
+        return self.init_lose, self.init_win, lr
 
 
 if __name__ == '__main__':

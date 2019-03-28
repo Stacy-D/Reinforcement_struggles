@@ -15,7 +15,7 @@ class QLearningAgent(Agent):
         self.discount = discountFactor
         self.init_lr = learningRate
         self.init_ep = epsilon
-        self.min_ep = 0.15
+        self.min_ep = 0.05
         self.setEpsilon(epsilon)
         self.q = defaultdict(lambda: initVals)
         self.action = None
@@ -81,8 +81,8 @@ class QLearningAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        lr = max(0.01, self.init_lr * 0.9 ** (numTakenActions / 5000))
-        eps = max(self.min_ep, self.init_ep * 0.99 ** (numTakenActions / 500))
+        lr = max(0.01, 0.2 * 0.95 ** (episodeNumber / 100))
+        eps = max(0.01, 0.85 * 0.85 ** (episodeNumber / 130))
         print((lr, eps))
         print((episodeNumber, numTakenActions))
         return lr, eps
@@ -138,8 +138,10 @@ if __name__ == '__main__':
         if status == 1:
             goal_scored += 1
             goals.append(num_steps)
-        if (episode+1) % 100 == 0:
+        if (episode+1) % 500 == 0:
             print((learningRate, epsilon))
             print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
-                                                                               goal_scored, goal_scored*100/episode+1,
+                                                                               goal_scored, goal_scored*100/500,
                                                                                np.mean(goals)))
+            goal_scored = 0
+            goals = []
