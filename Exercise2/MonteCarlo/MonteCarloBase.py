@@ -109,8 +109,9 @@ if __name__ == '__main__':
     goal_scored = 0
     goals = []
     # Run training Monte Carlo Method
+    import time
     import csv
-    with open('./monte.csv', 'w', encoding='utf-8') as f:
+    with open('./monte_{}.csv'.format(time.time()), 'w', encoding='utf-8') as f:
         csv_writer = csv.writer(f, delimiter=',')
         csv_writer.writerow(['Episode','scored','accuracy','steps', 'eps'])
         for episode in range(numEpisodes):

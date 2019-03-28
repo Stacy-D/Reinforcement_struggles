@@ -15,8 +15,8 @@ class ValueNetwork(nn.Module):
         self.num_states = num_states
 
         self.conv_1 = nn.Conv1d(1, 2, 3, 2)
-        self.fc_2 = nn.Linear(14, 32)
-        self.fc_3 = nn.Linear(32, n_actions)
+        self.fc_2 = nn.Linear(14, 64)
+        self.fc_3 = nn.Linear(64, n_actions)
 
     def forward(self, inputs):
         inputs_tr = inputs.view(1, 1, self.num_states)

@@ -122,43 +122,53 @@ if __name__ == '__main__':
     numTakenActions = 0
     goal_scored = 0
     goals = []
-    for episode in range(numEpisodes):
-        agent.reset()
-        status = 0
+    import logging
+    import time
+    logger = logging.getLogger(__name__+str(time.time()))
+    import csv
+    with open('./sarsa.csv', 'w', encoding='utf-8') as f:
+        csv_writer = csv.writer(f, delimiter=',')
+        csv_writer.writerow(['Episode','scored','accuracy','steps', 'eps', 'lr'])
+        for episode in range(numEpisodes):
+            agent.reset()
+            status = 0
 
-        observation = hfoEnv.reset()
-        nextObservation = None
-        epsStart = True
-        num_steps = 0
-        while status == 0:
-            learningRate, epsilon = agent.computeHyperparameters(numTakenActions, episode)
-            agent.setEpsilon(epsilon)
-            agent.setLearningRate(learningRate)
+            observation = hfoEnv.reset()
+            nextObservation = None
+            epsStart = True
+            num_steps = 0
+            while status == 0:
+                learningRate, epsilon = agent.computeHyperparameters(numTakenActions, episode)
+                agent.setEpsilon(epsilon)
+                agent.setLearningRate(learningRate)
 
-            obsCopy = observation.copy()
-            agent.setState(agent.toStateRepresentation(obsCopy))
-            action = agent.act()
-            numTakenActions += 1
-            num_steps += 1
-            nextObservation, reward, done, status = hfoEnv.step(action)
-            agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status,
-                                agent.toStateRepresentation(nextObservation))
+                obsCopy = observation.copy()
+                agent.setState(agent.toStateRepresentation(obsCopy))
+                action = agent.act()
+                numTakenActions += 1
+                num_steps += 1
+                nextObservation, reward, done, status = hfoEnv.step(action)
+                agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status,
+                                    agent.toStateRepresentation(nextObservation))
 
-            if not epsStart:
-                agent.learn()
-            else:
-                epsStart = False
+                if not epsStart:
+                    agent.learn()
+                else:
+                    epsStart = False
 
-            observation = nextObservation
+                observation = nextObservation
 
-        agent.setExperience(agent.toStateRepresentation(nextObservation), None, None, None, None)
-        agent.learn()
+            agent.setExperience(agent.toStateRepresentation(nextObservation), None, None, None, None)
+            agent.learn()
 
-        if status == 1:
-            goal_scored += 1
-            goals.append(num_steps)
-        if (episode+1) % 100 == 0:
-            print((learningRate, epsilon))
-            print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
-                                                                               goal_scored, goal_scored*100/episode+1,
-                                                                               np.mean(goals)))
+            if status == 1:
+                goal_scored += 1
+                goals.append(num_steps)
+            if (episode+1) % 500 == 0:
+                csv_writer.writerow([episode + 1, goal_scored, goal_scored * 100 / 500, np.mean(goals), epsilon, learningRate])
+                logger.info((learningRate, epsilon))
+                logger.info('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
+                                                                                   goal_scored, goal_scored*100/500,
+                                                                                   np.mean(goals)))
+                goal_scored = 0
+                goals = []

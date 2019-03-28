@@ -59,7 +59,7 @@ class HFOEnv(object):
         time.sleep(5)
         os.system("./Goalkeeper.py --numEpisodes=16000 --port={} &".format(str(self.port)))
         time.sleep(2)
-        self.hfo.connectToServer(HIGH_LEVEL_FEATURE_SET, self.config_dir, self.port, self.server_addr, self.team_name,
+        self.hfo.connectToServer(LOW_LEVEL_FEATURE_SET, self.config_dir, self.port, self.server_addr, self.team_name,
                                  self.play_goalie)
         print('{} connected'.format(self.port))
 
