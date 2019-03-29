@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import logging
 from Networks import ValueNetwork
 from Environment import HFOEnv
 import random
@@ -14,16 +13,12 @@ def train(idx, args, learning_network, target_network, optimizer, lock, counter)
     port = 8100 + 10 * idx  # init
     seed = idx*113 + 923
     torch.manual_seed(seed)
-    logger = logging.getLogger(str(port)+__name__)
-    logger.info('Init')
-
     worker_network = ValueNetwork(15, 4)
     worker_network.load_state_dict(learning_network.state_dict())
     # change init
     # init env
     hfo_env = HFOEnv(numTeammates=0, numOpponents=1, port=port, seed=seed)
     hfo_env.connectToServer()
-    logger.info('Port {} connected'.format(port))
     episode_num = 0
     eps = random.sample(epsilon_list, 1)[0]
     worker_timestep = 0
@@ -84,20 +79,6 @@ def train(idx, args, learning_network, target_network, optimizer, lock, counter)
                 saveModelNetwork(learning_network, args.checkpoint_dir + '_{}'.format(counter.value))
         episode_num += 1
 
-        if episode_num % 500 == 0:
-            logger.info('Global - {}, Local - {}, Episode - {}, Scored {}, Time avg {}'.format(counter.value,
-                                                                                               worker_timestep,
-                                                                                               episode_num,
-                                                                                               goal,
-                                                                                               np.mean(to_goal)))
-            print('ID {} Global - {}, Local - {}, Episode - {}, Scored {}, Time avg {}'.format(idx,
-                                                                                               counter.value,
-                                                                                               worker_timestep,
-                                                                                               episode_num,
-                                                                                               goal,
-                                                                                               np.mean(to_goal)))
-            to_goal = []
-            goal = 0
         # if time is exceeded -> break the loop
         can_continue = counter.value <= args.max_steps\
                        and worker_timestep <= max_worker_steps\
@@ -107,7 +88,6 @@ def train(idx, args, learning_network, target_network, optimizer, lock, counter)
     hfo_env.quitGame()
     # save the network it stopped with
     saveModelNetwork(learning_network, args.checkpoint_dir + '_{}_final'.format(counter.value))
-    logger.info('Finished')
 
 
 

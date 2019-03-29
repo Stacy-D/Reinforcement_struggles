@@ -12,7 +12,6 @@ import numpy as np
 class JointQLearningAgent(Agent):
     def __init__(self, learningRate, discountFactor, epsilon, numTeammates, initVals=0.0):
         super(JointQLearningAgent, self).__init__()
-
         self.learning_rate = learningRate
         self.discount = discountFactor
         self.team = numTeammates
@@ -88,8 +87,8 @@ class JointQLearningAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        lr = max(self.min_lr, self.init_lr * 0.95 ** (episodeNumber / 1700))
-        eps = max(self.min_ep, self.init_ep * 0.85 ** (episodeNumber / 2000))
+        lr = max(self.min_lr, self.init_lr * np.power(0.95, (episodeNumber / 1700)))
+        eps = max(self.min_ep, self.init_ep * np.power(0.85, (episodeNumber / 2000)))
         return lr, eps
 
 
@@ -149,7 +148,6 @@ if __name__ == '__main__':
             goal_scored += 1
             goals.append(num_steps)
         if (episode+1) % 500 == 0:
-            print((learningRate, epsilon))
             print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
                                                                                goal_scored, goal_scored*100/500,
                                                                                np.mean(goals)))
@@ -183,7 +181,6 @@ if __name__ == '__main__':
         if status[0] == 'GOAL':
             goal_scored += 1
             goals.append(num_steps)
-    print((learningRate, epsilon))
     print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(500,
                                                                        goal_scored, goal_scored * 100 / 500,
                                                                        np.mean(goals)))

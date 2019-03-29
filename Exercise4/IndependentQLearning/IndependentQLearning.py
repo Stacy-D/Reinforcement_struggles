@@ -22,7 +22,6 @@ class IndependentQLearningAgent(Agent):
         self.cur_state = None
         self.status = None
         self.update = 0
-        self.decay_factor = (self.init_ep - self.min_ep) / (5000 * 100)
         # initial hyperparams
         self.init_lr = 0.1
         self.min_lr = 0.01
@@ -86,8 +85,8 @@ class IndependentQLearningAgent(Agent):
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        lr = max(self.min_lr, self.init_lr * 0.95 ** (episodeNumber / 1700))
-        eps = max(self.min_ep, self.init_ep * 0.85 ** (episodeNumber / 1200))
+        lr = max(self.min_lr, self.init_lr * np.power(0.95, (episodeNumber / 1700)))
+        eps = max(self.min_ep, self.init_ep * np.power(0.85, (episodeNumber / 1200)))
         return lr, eps
 
 
@@ -102,7 +101,7 @@ if __name__ == '__main__':
     MARLEnv = DiscreteMARLEnvironment(numOpponents=args.numOpponents, numAgents=args.numAgents)
     agents = []
     for i in range(args.numAgents):
-        agent = IndependentQLearningAgent(learningRate=0.1, discountFactor=0.99, epsilon=1) # 0.8
+        agent = IndependentQLearningAgent(learningRate=0.1, discountFactor=0.99, epsilon=1)
         agents.append(agent)
 
     numEpisodes = args.numEpisodes
@@ -143,7 +142,6 @@ if __name__ == '__main__':
             goal_scored += 1
             goals.append(num_steps)
         if (episode+1) % 500 == 0:
-            print((learningRate, epsilon))
             print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
                                                                                goal_scored, goal_scored*100/500,
                                                                                np.mean(goals)))

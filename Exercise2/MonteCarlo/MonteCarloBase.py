@@ -14,14 +14,14 @@ class MonteCarloAgent(Agent):
         self.policy = self.get_epsilon_policy()
         self.discount = discountFactor
         self.epsilon = epsilon
-        self.min_ep = 0.15
-        self.init_ep = epsilon
         # init for sum and count
         self.returns = defaultdict(lambda: defaultdict(float))
         self.current_episode = []
         self.cur_state = None
         self.status = None
         self.q = defaultdict(lambda: initVals)
+        self.init_ep = 0.85
+        self.min_ep = 0.001
 
     def learn(self):
         lookup = set()
@@ -60,9 +60,7 @@ class MonteCarloAgent(Agent):
         self.epsilon = epsilon
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
-        self.init_ep = 0.85
-        eps = max(0.001, self.init_ep * 0.85 ** (episodeNumber / 110))
-        return eps
+        return max(self.min_ep, self.init_ep * np.power(0.85, episodeNumber / 110))
 
     def get_best_action(self, state):
         val = float('-inf')

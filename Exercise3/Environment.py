@@ -59,7 +59,7 @@ class HFOEnv(object):
         time.sleep(5)
         os.system("./Goalkeeper.py --numEpisodes=16000 --port={} &".format(str(self.port)))
         time.sleep(2)
-        self.hfo.connectToServer(LOW_LEVEL_FEATURE_SET, self.config_dir, self.port, self.server_addr, self.team_name,
+        self.hfo.connectToServer(HIGH_LEVEL_FEATURE_SET, self.config_dir, self.port, self.server_addr, self.team_name,
                                  self.play_goalie)
         print('{} connected'.format(self.port))
 
@@ -97,7 +97,7 @@ class HFOEnv(object):
          base your rewards and states from. Just ensure that you've put the correct choice in line 56 of Environment.py.
         """
         if status == GOAL:
-            reward = 1.0
+            reward = 2.0
         elif status in [CAPTURED_BY_DEFENSE, OUT_OF_BOUNDS, OUT_OF_TIME]:
             reward = -1.0
         else:

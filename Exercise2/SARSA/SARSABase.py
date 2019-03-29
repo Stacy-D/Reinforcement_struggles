@@ -14,22 +14,26 @@ class SARSAAgent(Agent):
         super(SARSAAgent, self).__init__()
         self.learning_rate = learningRate
         self.discount = discountFactor
-        self.init_lr = learningRate
-        self.init_ep = epsilon
-        self.min_ep = 0.15
         self.setEpsilon(epsilon)
         self.q = defaultdict(lambda: initVals)
-        self.prev_act = None
-        self.action = None
         self.prev_state = None
         self.cur_state = None
-        self.status = None
-        self.error = 0
-        self.reward = 0
+        self.next_state = None
+        self.prev_reward = None
+        self.reward = None
+        self.prev_act = None
+        self.cur_act = None
+        self.state = None
+        self.min_ep = 0.001
+        self.min_lr = 0.01
+        self.init_ep = 0.85
+        self.init_lr = 0.2
 
     def learn(self):
         # value after update subtracted by value before update
-        td_update = self.learning_rate*self.update
+        td_update = self.learning_rate*(self.prev_reward +
+                                        self.discount*self.q[(self.cur_state, self.cur_act)] -
+                                        self.q[(self.prev_state, self.prev_act)])
         self.q[(self.prev_state, self.prev_act)] += td_update
         return td_update
 
@@ -37,7 +41,7 @@ class SARSAAgent(Agent):
         #  return the action that should be taken by the agent at the current state
         sample = random.random()
         if sample > self.epsilon:
-            return self.get_best_action(self.cur_state)
+            return self.get_best_action(self.state)
         else:
             return self.possibleActions[random.randint(0, 4)]
 
@@ -52,29 +56,23 @@ class SARSAAgent(Agent):
     def setState(self, state):
         # no output
         # provide the agents you're controlling with the current state information
-        self.cur_state = state
+        self.state = state
 
     def setExperience(self, state, action, reward, status, nextState):
         #  prepare your agent to learn using the SARSA update
-        if self.action is None:
-            old_val = 0
-        else:
-            old_val = self.q[(state, self.action)]
-        self.update = self.reward + self.discount * self.q[(nextState, action)] - old_val
-        # update vars
-        self.prev_state = state
-        self.cur_state = nextState
-        self.prev_act = self.action
-        self.action = action
-        self.status = status
+        self.prev_state = self.cur_state
+        self.cur_state = state
+        self.next_state = nextState
+        self.prev_reward = self.reward
         self.reward = reward
+        self.prev_act = self.cur_act
+        self.cur_act = action
 
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
         # tuple indicating the learning rate and epsilon used at a certain timestep
-        k = 0.01
-        lr = self.init_lr * 0.99**(numTakenActions/1000)
-        eps = max(self.min_ep, self.init_ep * 0.99**(numTakenActions/(50 * (episodeNumber + 1))))
+        lr = max(self.min_lr, self.init_lr * 0.95 ** (episodeNumber / 110))
+        eps = max(self.min_ep, self.init_ep * 0.85 ** (episodeNumber / 130))
         return lr, eps
 
     def toStateRepresentation(self, state):
@@ -83,13 +81,14 @@ class SARSAAgent(Agent):
 
     def reset(self):
         # reset some states of an agent at the beginning of each episode.
-        self.prev_act = None
-        self.action = None
         self.prev_state = None
         self.cur_state = None
-        self.status = None
-        self.update = 0
-        self.reward = 0
+        self.next_state = None
+        self.prev_reward = None
+        self.reward = None
+        self.prev_act = None
+        self.cur_act = None
+        self.state = None
 
     def setLearningRate(self, learning_rate):
         #  set the learning rate
@@ -116,59 +115,51 @@ if __name__ == '__main__':
     hfoEnv.connectToServer()
 
     # Initialize a SARSA Agent
-    agent = SARSAAgent(0.2, 0.95, 0.8)
+    agent = SARSAAgent(0.2, 0.95, 0.85)
 
     # Run training using SARSA
     numTakenActions = 0
     goal_scored = 0
     goals = []
-    import logging
-    import time
-    logger = logging.getLogger(__name__+str(time.time()))
-    import csv
-    with open('./sarsa.csv', 'w', encoding='utf-8') as f:
-        csv_writer = csv.writer(f, delimiter=',')
-        csv_writer.writerow(['Episode','scored','accuracy','steps', 'eps', 'lr'])
-        for episode in range(numEpisodes):
-            agent.reset()
-            status = 0
+    for episode in range(numEpisodes):
+        agent.reset()
+        status = 0
 
-            observation = hfoEnv.reset()
-            nextObservation = None
-            epsStart = True
-            num_steps = 0
-            while status == 0:
-                learningRate, epsilon = agent.computeHyperparameters(numTakenActions, episode)
-                agent.setEpsilon(epsilon)
-                agent.setLearningRate(learningRate)
+        observation = hfoEnv.reset()
+        nextObservation = None
+        epsStart = True
+        num_steps = 0
+        while status == 0:
+            learningRate, epsilon = agent.computeHyperparameters(numTakenActions, episode)
+            agent.setEpsilon(epsilon)
+            agent.setLearningRate(learningRate)
 
-                obsCopy = observation.copy()
-                agent.setState(agent.toStateRepresentation(obsCopy))
-                action = agent.act()
-                numTakenActions += 1
-                num_steps += 1
-                nextObservation, reward, done, status = hfoEnv.step(action)
-                agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status,
-                                    agent.toStateRepresentation(nextObservation))
+            obsCopy = observation.copy()
+            agent.setState(agent.toStateRepresentation(obsCopy))
+            action = agent.act()
+            numTakenActions += 1
+            num_steps += 1
+            nextObservation, reward, done, status = hfoEnv.step(action)
+            agent.setExperience(agent.toStateRepresentation(obsCopy), action, reward, status,
+                                agent.toStateRepresentation(nextObservation))
 
-                if not epsStart:
-                    agent.learn()
-                else:
-                    epsStart = False
+            if not epsStart:
+                agent.learn()
+            else:
+                epsStart = False
 
-                observation = nextObservation
+            observation = nextObservation
 
-            agent.setExperience(agent.toStateRepresentation(nextObservation), None, None, None, None)
-            agent.learn()
+        agent.setExperience(agent.toStateRepresentation(nextObservation), None, None, None, None)
+        agent.learn()
 
-            if status == 1:
-                goal_scored += 1
-                goals.append(num_steps)
-            if (episode+1) % 500 == 0:
-                csv_writer.writerow([episode + 1, goal_scored, goal_scored * 100 / 500, np.mean(goals), epsilon, learningRate])
-                logger.info((learningRate, epsilon))
-                logger.info('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
-                                                                                   goal_scored, goal_scored*100/500,
-                                                                                   np.mean(goals)))
-                goal_scored = 0
-                goals = []
+        if status == 1:
+            goal_scored += 1
+            goals.append(num_steps)
+        if (episode+1) % 500 == 0:
+            print((learningRate, epsilon))
+            print('Episode {} scored {}, accuracy {}, steps to goal {}'.format(episode+1,
+                                                                               goal_scored, goal_scored*100/500,
+                                                                               np.mean(goals)))
+            goal_scored = 0
+            goals = []

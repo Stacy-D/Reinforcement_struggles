@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # encoding utf-8
-
-import random
 import argparse
 from DiscreteMARLUtils.Environment import DiscreteMARLEnvironment
 from DiscreteMARLUtils.Agent import Agent
@@ -18,9 +16,6 @@ class WolfPHCAgent(Agent):
         self.policy = defaultdict(lambda: 1 / len(self.possibleActions))
         self.avg_policy = defaultdict(float)
         self.c = defaultdict(float)
-        self.init_lr = learningRate
-        self.init_win = winDelta
-        self.init_lose = loseDelta
         self.discount = discountFactor
         self.setLearningRate(learningRate)
         self.setLoseDelta(loseDelta)
@@ -28,6 +23,10 @@ class WolfPHCAgent(Agent):
         self.sub_opt_act = None
         self.delta = 0
         self.opt_act = None
+        self.init_lr = 0.3
+        self.min_lr = 0.1
+        self.init_win = 0.0025
+        self.init_lose = 0.01
 
     def setExperience(self, state, action, reward, status, nextState):
         self.update = reward + self.discount * self.get_q_max(nextState) - self.q[(state, action)]
@@ -105,10 +104,7 @@ class WolfPHCAgent(Agent):
         self.lose_delta = loseDelta
 
     def computeHyperparameters(self, numTakenActions, episodeNumber):
-        self.init_lr = 0.3
-        self.init_win = 0.0025
-        self.init_lose = 0.01
-        lr =  max(0.05, self.init_lr * 0.9 ** (episodeNumber / 4000))
+        lr =  max(0.09, 0.9 * 0.9 ** (episodeNumber / 1750))
         return self.init_lose, self.init_win, lr
 
 

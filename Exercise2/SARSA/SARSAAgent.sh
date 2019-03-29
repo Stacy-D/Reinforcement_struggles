@@ -3,7 +3,7 @@
 # Number of defense agents must be added by one to take into account of goalkeeper
 # Cannot run an environment where defending agents exist but none are playing
 # goalkeeper
-NUM_EPISODES=5000
+NUM_EPISODES=10000
 PORT=8123
 ./../../../bin/HFO --port $PORT --defense-agents=2 --offense-agents=1 --offense-on-ball 11 --trials $NUM_EPISODES --headless --deterministic --discrete=True --frames-per-trial 2000 --untouched-time 2000 &
 sleep 5
@@ -12,15 +12,15 @@ echo "Environment Initialized"
 # Sleep is needed to make sure doesn't get connected too soon, as unum 1 (goalie)
 
 sleep 5
-./SARSABase.py --port $PORT --numOpponents=1 --numEpisodes=$NUM_EPISODES &
+./SARSABase.py --port $PORT --numOpponents=1 --numEpisodes=5000  &
 echo "Attacker Controller Initialized"
 
 sleep 5
-./DiscreteHFO/Goalkeeper.py --port $PORT --numEpisodes=$NUM_EPISODES  >/dev/null 2>&1 &
+./DiscreteHFO/Goalkeeper.py --port $PORT --numEpisodes=$NUM_EPISODES   &
 echo "Goalkeeper Initialized"
 
 sleep 5
-./DiscreteHFO/DiscretizedDefendingPlayer.py --port $PORT --numEpisodes=$NUM_EPISODES --id=1 >/dev/null 2>&1   &
+./DiscreteHFO/DiscretizedDefendingPlayer.py --port $PORT --numEpisodes=$NUM_EPISODES --id=1    &
 echo "Defending Player Initialized"
 
 sleep 5
